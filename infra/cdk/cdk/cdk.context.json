@@ -6,14 +6,10 @@
     34892
   ],
   "cli-telemetry": false,
-  "bwapp-base-domain-name": "bwapp.basewarp.app",
+  "bwapp-base-domain-name": "basewarp.app",
   "bwapp-deployments": [
     "Prod",
-    "Stag",
-    "Dev1",
-    "Dev2",
-    "Dev3",
-    "DevAdam"
+    "Stag"
   ],
   "bwapp-dns-delegated": true,
   "bwapp-primary-region": "eu-central-1",

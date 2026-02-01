@@ -2,7 +2,6 @@ package bwcdkutil
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
@@ -77,15 +76,10 @@ type Config struct {
 	PrimaryRegion    string   `validate:"required"`
 	SecondaryRegions []string `validate:"dive,required"`
 	Deployments      []string `validate:"required,dive,required"`
-	DeployerGroups   []string // nil during bootstrap, optional
 	BaseDomainName   string   `validate:"required,fqdn"`
 
 	// Validation flags for foundational infrastructure
 	DNSDelegated bool // true when DNS delegation is complete
-
-	// From AppConfig (not context)
-	DeployersGroup        string   `validate:"required"`
-	RestrictedDeployments []string `validate:"dive,required"`
 }
 
 // NewConfig reads and validates all CDK context values.
@@ -94,9 +88,7 @@ func NewConfig(scope constructs.Construct, acfg AppConfig) (*Config, error) {
 	var readErrs []string
 
 	cfg := &Config{
-		Prefix:                acfg.Prefix,
-		DeployersGroup:        acfg.DeployersGroup,
-		RestrictedDeployments: acfg.RestrictedDeployments,
+		Prefix: acfg.Prefix,
 	}
 
 	cfg.Qualifier, readErrs = readContextString(scope, acfg.Prefix+"qualifier", readErrs)
@@ -117,9 +109,6 @@ func NewConfig(scope constructs.Construct, acfg AppConfig) (*Config, error) {
 				"unknown secondary region %q - add it to bwcdkutil.RegionIdents", region))
 		}
 	}
-
-	// DeployerGroups is optional (nil during bootstrap)
-	cfg.DeployerGroups = readOptionalDeployerGroups(scope, acfg.Prefix)
 
 	if len(readErrs) > 0 {
 		return nil, errors.Errorf("CDK context read errors:\n  - %s", strings.Join(readErrs, "\n  - "))
@@ -191,26 +180,6 @@ func ConfigFromScope(scope constructs.Construct) *Config {
 	return cfg
 }
 
-// AllowedDeployments returns deployments the current deployer can access.
-// Returns nil if DeployerGroups is nil (bootstrap mode).
-func (c *Config) AllowedDeployments() []string {
-	if c.DeployerGroups == nil {
-		return nil
-	}
-
-	if slices.Contains(c.DeployerGroups, c.DeployersGroup) {
-		return c.Deployments
-	}
-
-	allowed := make([]string, 0, len(c.Deployments))
-	for _, d := range c.Deployments {
-		if !slices.Contains(c.RestrictedDeployments, d) {
-			allowed = append(allowed, d)
-		}
-	}
-	return allowed
-}
-
 func formatValidationError(e validator.FieldError) string {
 	switch e.Tag() {
 	case "required":
@@ -256,18 +225,6 @@ func readContextStringSlice(scope constructs.Construct, key string, errs []strin
 		result = append(result, s)
 	}
 	return result, errs
-}
-
-func readOptionalDeployerGroups(scope constructs.Construct, prefix string) []string {
-	val := scope.Node().TryGetContext(jsii.String(prefix + "deployer-groups"))
-	if val == nil {
-		return nil
-	}
-	str, ok := val.(string)
-	if !ok || str == "" {
-		return nil
-	}
-	return strings.Fields(str)
 }
 
 func readOptionalContextBool(scope constructs.Construct, key string) bool {

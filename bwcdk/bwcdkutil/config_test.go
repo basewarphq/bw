@@ -27,13 +27,10 @@ func TestNewConfig(t *testing.T) {
 				"myapp-primary-region":    "us-east-1",
 				"myapp-secondary-regions": []any{"eu-west-1"},
 				"myapp-deployments":       []any{"Dev", "Stag", "Prod"},
-				"myapp-deployer-groups":   "myapp-deployers",
 				"myapp-base-domain-name":  "example.com",
 			},
 			appConfig: bwcdkutil.AppConfig{
-				Prefix:                "myapp-",
-				DeployersGroup:        "myapp-deployers",
-				RestrictedDeployments: []string{"Stag", "Prod"},
+				Prefix: "myapp-",
 			},
 			wantErr: false,
 		},
@@ -47,8 +44,7 @@ func TestNewConfig(t *testing.T) {
 				"myapp-base-domain-name":  "example.com",
 			},
 			appConfig: bwcdkutil.AppConfig{
-				Prefix:         "myapp-",
-				DeployersGroup: "myapp-deployers",
+				Prefix: "myapp-",
 			},
 			wantErr: false,
 		},
@@ -61,8 +57,7 @@ func TestNewConfig(t *testing.T) {
 				"myapp-base-domain-name":  "example.com",
 			},
 			appConfig: bwcdkutil.AppConfig{
-				Prefix:         "myapp-",
-				DeployersGroup: "myapp-deployers",
+				Prefix: "myapp-",
 			},
 			wantErr:     true,
 			errContains: []string{"myapp-qualifier", "is not set"},
@@ -77,8 +72,7 @@ func TestNewConfig(t *testing.T) {
 				"myapp-base-domain-name":  "example.com",
 			},
 			appConfig: bwcdkutil.AppConfig{
-				Prefix:         "myapp-",
-				DeployersGroup: "myapp-deployers",
+				Prefix: "myapp-",
 			},
 			wantErr:     true,
 			errContains: []string{"Qualifier", "exceeds maximum length"},
@@ -93,8 +87,7 @@ func TestNewConfig(t *testing.T) {
 				"myapp-base-domain-name":  "not a valid domain",
 			},
 			appConfig: bwcdkutil.AppConfig{
-				Prefix:         "myapp-",
-				DeployersGroup: "myapp-deployers",
+				Prefix: "myapp-",
 			},
 			wantErr:     true,
 			errContains: []string{"BaseDomainName", "valid domain"},
@@ -109,8 +102,7 @@ func TestNewConfig(t *testing.T) {
 				"myapp-base-domain-name":  "example.com",
 			},
 			appConfig: bwcdkutil.AppConfig{
-				Prefix:         "myapp-",
-				DeployersGroup: "myapp-deployers",
+				Prefix: "myapp-",
 			},
 			wantErr:     true,
 			errContains: []string{"unknown primary region"},
@@ -125,8 +117,7 @@ func TestNewConfig(t *testing.T) {
 				"myapp-base-domain-name":  "example.com",
 			},
 			appConfig: bwcdkutil.AppConfig{
-				Prefix:         "myapp-",
-				DeployersGroup: "myapp-deployers",
+				Prefix: "myapp-",
 			},
 			wantErr:     true,
 			errContains: []string{"unknown secondary region"},
@@ -137,8 +128,7 @@ func TestNewConfig(t *testing.T) {
 				"myapp-secondary-regions": []any{},
 			},
 			appConfig: bwcdkutil.AppConfig{
-				Prefix:         "myapp-",
-				DeployersGroup: "myapp-deployers",
+				Prefix: "myapp-",
 			},
 			wantErr:     true,
 			errContains: []string{"myapp-qualifier", "myapp-primary-region", "myapp-deployments"},
@@ -153,8 +143,7 @@ func TestNewConfig(t *testing.T) {
 				"myapp-base-domain-name":  "example.com",
 			},
 			appConfig: bwcdkutil.AppConfig{
-				Prefix:         "myapp-",
-				DeployersGroup: "myapp-deployers",
+				Prefix: "myapp-",
 			},
 			wantErr:     true,
 			errContains: []string{"myapp-qualifier", "must be a string"},
@@ -169,8 +158,7 @@ func TestNewConfig(t *testing.T) {
 				"myapp-base-domain-name":  "example.com",
 			},
 			appConfig: bwcdkutil.AppConfig{
-				Prefix:         "myapp-",
-				DeployersGroup: "myapp-deployers",
+				Prefix: "myapp-",
 			},
 			wantErr:     true,
 			errContains: []string{"myapp-deployments", "must be an array"},
@@ -226,8 +214,7 @@ func TestConfig_AllRegions(t *testing.T) {
 	})
 
 	cfg, err := bwcdkutil.NewConfig(app, bwcdkutil.AppConfig{
-		Prefix:         "myapp-",
-		DeployersGroup: "deployers",
+		Prefix: "myapp-",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -248,83 +235,6 @@ func TestConfig_AllRegions(t *testing.T) {
 	}
 }
 
-func TestConfig_AllowedDeployments(t *testing.T) {
-	tests := []struct {
-		name            string
-		deployerGroups  string
-		wantLen         int
-		wantDeployments []string
-	}{
-		{
-			name:            "full deployer has all",
-			deployerGroups:  "myapp-deployers",
-			wantLen:         3,
-			wantDeployments: []string{"Dev", "Stag", "Prod"},
-		},
-		{
-			name:            "limited deployer has only Dev",
-			deployerGroups:  "limited-group",
-			wantLen:         1,
-			wantDeployments: []string{"Dev"},
-		},
-		{
-			name:            "no groups returns nil",
-			deployerGroups:  "",
-			wantLen:         0,
-			wantDeployments: nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			defer jsii.Close()
-
-			ctx := map[string]any{
-				"myapp-qualifier":         "myapp",
-				"myapp-primary-region":    "us-east-1",
-				"myapp-secondary-regions": []any{},
-				"myapp-deployments":       []any{"Dev", "Stag", "Prod"},
-				"myapp-base-domain-name":  "example.com",
-			}
-			if tt.deployerGroups != "" {
-				ctx["myapp-deployer-groups"] = tt.deployerGroups
-			}
-
-			app := awscdk.NewApp(&awscdk.AppProps{
-				Context: &ctx,
-			})
-
-			cfg, err := bwcdkutil.NewConfig(app, bwcdkutil.AppConfig{
-				Prefix:                "myapp-",
-				DeployersGroup:        "myapp-deployers",
-				RestrictedDeployments: []string{"Stag", "Prod"},
-			})
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			allowed := cfg.AllowedDeployments()
-
-			if tt.wantDeployments == nil {
-				if allowed != nil {
-					t.Fatalf("AllowedDeployments() = %v, want nil", allowed)
-				}
-				return
-			}
-
-			if len(allowed) != tt.wantLen {
-				t.Fatalf("AllowedDeployments() = %v (len %d), want len %d", allowed, len(allowed), tt.wantLen)
-			}
-
-			for i, want := range tt.wantDeployments {
-				if allowed[i] != want {
-					t.Errorf("AllowedDeployments()[%d] = %q, want %q", i, allowed[i], want)
-				}
-			}
-		})
-	}
-}
-
 func TestConfig_RegionIdent(t *testing.T) {
 	defer jsii.Close()
 
@@ -339,8 +249,7 @@ func TestConfig_RegionIdent(t *testing.T) {
 	})
 
 	cfg, err := bwcdkutil.NewConfig(app, bwcdkutil.AppConfig{
-		Prefix:         "myapp-",
-		DeployersGroup: "deployers",
+		Prefix: "myapp-",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

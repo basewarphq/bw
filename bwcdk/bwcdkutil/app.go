@@ -17,10 +17,6 @@ type DeploymentConstructor[S any] func(stack awscdk.Stack, shared S, deploymentI
 type AppConfig struct {
 	// Prefix for context keys (e.g., "myapp-" for "myapp-qualifier", "myapp-primary-region", etc.)
 	Prefix string
-	// DeployersGroup is the IAM group that can deploy to all environments.
-	DeployersGroup string
-	// RestrictedDeployments are deployment identifiers that require DeployersGroup membership.
-	RestrictedDeployments []string
 }
 
 // SetupApp configures a CDK app with multi-region, multi-deployment stacks.
@@ -59,8 +55,8 @@ func SetupApp[S any](
 		secondarySharedStack.AddDependency(primarySharedStack, jsii.String("Primary region must deploy first"))
 	}
 
-	// Create stacks for each allowed deployment
-	for _, deploymentIdent := range config.AllowedDeployments() {
+	// Create stacks for each deployment
+	for _, deploymentIdent := range config.Deployments {
 		primaryDeploymentStack := NewStackFromConfig(app, config, config.PrimaryRegion, deploymentIdent)
 		newDeployment(primaryDeploymentStack, primaryShared, deploymentIdent)
 		primaryDeploymentStack.AddDependency(primarySharedStack,

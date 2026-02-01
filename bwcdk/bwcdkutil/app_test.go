@@ -21,7 +21,6 @@ func TestSetupApp_NoSecondaryRegions(t *testing.T) {
 		"myapp-primary-region":    "us-east-1",
 		"myapp-secondary-regions": []any{},
 		"myapp-deployments":       []any{"Dev", "Prod"},
-		"myapp-deployer-groups":   "myapp-deployers",
 		"myapp-base-domain-name":  "example.com",
 	}
 
@@ -33,8 +32,7 @@ func TestSetupApp_NoSecondaryRegions(t *testing.T) {
 	var deploymentCalls []struct{ Region, Deployment string }
 
 	bwcdkutil.SetupApp(app, bwcdkutil.AppConfig{
-		Prefix:         "myapp-",
-		DeployersGroup: "myapp-deployers",
+		Prefix: "myapp-",
 	},
 		func(stack awscdk.Stack) *testShared {
 			sharedCalls = append(sharedCalls, *stack.Region())
@@ -80,7 +78,6 @@ func TestSetupApp_WithSecondaryRegions(t *testing.T) {
 		"myapp-primary-region":    "us-east-1",
 		"myapp-secondary-regions": []any{"eu-west-1"},
 		"myapp-deployments":       []any{"Dev"},
-		"myapp-deployer-groups":   "myapp-deployers",
 		"myapp-base-domain-name":  "example.com",
 	}
 
@@ -92,8 +89,7 @@ func TestSetupApp_WithSecondaryRegions(t *testing.T) {
 	var deploymentCalls []struct{ Region, Deployment string }
 
 	bwcdkutil.SetupApp(app, bwcdkutil.AppConfig{
-		Prefix:         "myapp-",
-		DeployersGroup: "myapp-deployers",
+		Prefix: "myapp-",
 	},
 		func(stack awscdk.Stack) *testShared {
 			sharedCalls = append(sharedCalls, *stack.Region())

@@ -15,9 +15,7 @@ func main() {
 	app := awscdk.NewApp(nil)
 
 	bwcdkutil.SetupApp(app, bwcdkutil.AppConfig{
-		Prefix:                projectPrefix+"-",
-		DeployersGroup:        projectPrefix+"-deployers",
-		RestrictedDeployments: []string{"Stag", "Prod"},
+		Prefix: projectPrefix + "-",
 	},
 		cdk.NewShared,
 		cdk.NewDeployment,

@@ -9,9 +9,7 @@
 //	    app := awscdk.NewApp(nil)
 //
 //	    bwcdkutil.SetupApp(app, bwcdkutil.AppConfig{
-//	        Prefix:                "myapp-",
-//	        DeployersGroup:        "myapp-deployers",
-//	        RestrictedDeployments: []string{"Stag", "Prod"},
+//	        Prefix: "myapp-",
 //	    },
 //	        func(stack awscdk.Stack) *Shared { return NewShared(stack) },
 //	        func(stack awscdk.Stack, shared *Shared, deploymentIdent string) {
@@ -32,8 +30,7 @@
 //	  "myapp-secondary-regions": ["eu-west-1"],
 //	  "myapp-region-ident-us-east-1": "use1",
 //	  "myapp-region-ident-eu-west-1": "euw1",
-//	  "myapp-deployments": ["Dev", "Stag", "Prod"],
-//	  "myapp-deployer-groups": "myapp-deployers"
+//	  "myapp-deployments": ["Dev", "Stag", "Prod"]
 //	}
 //
 // # Stack Creation Order
@@ -49,6 +46,5 @@
 //   - [SetupApp]: Multi-region, multi-deployment app orchestration
 //   - [NewStack]: Stack creation with qualifier and region naming
 //   - [ReproducibleGoBundling]: Lambda bundling for identical builds
-//   - [AllowedDeployments]: Role-based deployment authorization
 //   - [PreserveExport]: CloudFormation export preservation
 package bwcdkutil

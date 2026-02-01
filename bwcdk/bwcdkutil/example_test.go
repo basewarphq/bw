@@ -57,7 +57,6 @@ func NewDeployment(stack awscdk.Stack, shared *Shared, deploymentIdent string) *
 //	  "myapp-primary-region": "us-east-1",
 //	  "myapp-secondary-regions": ["eu-west-1"],
 //	  "myapp-deployments": ["Dev", "Stag", "Prod"],
-//	  "myapp-deployer-groups": "myapp-deployers",
 //	  "myapp-base-domain-name": "example.com"
 //	}
 func Example_setupApp() {
@@ -68,7 +67,6 @@ func Example_setupApp() {
 		"myapp-primary-region":    "us-east-1",
 		"myapp-secondary-regions": []any{"eu-west-1"},
 		"myapp-deployments":       []any{"Dev", "Stag", "Prod"},
-		"myapp-deployer-groups":   "myapp-deployers",
 		"myapp-base-domain-name":  "example.com",
 	}
 
@@ -77,9 +75,7 @@ func Example_setupApp() {
 	})
 
 	bwcdkutil.SetupApp(app, bwcdkutil.AppConfig{
-		Prefix:                "myapp-",
-		DeployersGroup:        "myapp-deployers",
-		RestrictedDeployments: []string{"Stag", "Prod"},
+		Prefix: "myapp-",
 	},
 		NewShared,
 		func(stack awscdk.Stack, shared *Shared, deploymentIdent string) {
