@@ -19,6 +19,6 @@
   "bwapp-primary-region": "eu-central-1",
   "bwapp-qualifier": "bwapp",
   "bwapp-secondary-regions": [
-    "eu-north-1"
+    "eu-west-1"
   ]
 }

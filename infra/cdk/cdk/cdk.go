@@ -1,9 +1,9 @@
 package main
 
 import (
-	"cdk/cdk"
+	"github.com/basewarphq/bwapp/infra/cdk"
 
-	"github.com/advdv/ago/agcdkutil"
+	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/jsii-runtime-go"
 )
@@ -14,7 +14,7 @@ func main() {
 	defer jsii.Close()
 	app := awscdk.NewApp(nil)
 
-	agcdkutil.SetupApp(app, agcdkutil.AppConfig{
+	bwcdkutil.SetupApp(app, bwcdkutil.AppConfig{
 		Prefix:                projectPrefix+"-",
 		DeployersGroup:        projectPrefix+"-deployers",
 		RestrictedDeployments: []string{"Stag", "Prod"},

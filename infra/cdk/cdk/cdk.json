@@ -1,5 +1,6 @@
 {
   "app": "go mod download \u0026\u0026 go run cdk.go",
+  "toolkitStackName": "CDKToolkit-bwapp",
   "context": {
     "@aws-cdk-containers/ecs-service-extensions:enableDefaultLogDriver": true,
     "@aws-cdk/aws-apigateway:authorizerChangeDeploymentLogicalId": true,
@@ -74,6 +75,7 @@
     "@aws-cdk/core:enablePartitionLiterals": true,
     "@aws-cdk/core:explicitStackTags": true,
     "@aws-cdk/core:includePrefixInUniqueNameGeneration": true,
+    "@aws-cdk/core:bootstrapQualifier": "bwapp",
     "@aws-cdk/core:target-partitions": [
       "aws",
       "aws-cn"
