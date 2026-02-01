@@ -1,4 +1,4 @@
-package coreback
+package main
 
 import (
 	"fmt"
