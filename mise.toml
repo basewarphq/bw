@@ -1,0 +1,4 @@
+[tools]
+amp = "latest"
+go = "latest"
+node = "22"

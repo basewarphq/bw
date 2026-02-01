@@ -1,0 +1,24 @@
+{
+  "@aws-cdk/core:permissionsBoundary": {
+    "name": "bwapp-permissions-boundary"
+  },
+  "acknowledged-issue-numbers": [
+    34892
+  ],
+  "cli-telemetry": false,
+  "bwapp-base-domain-name": "bwapp.basewarp.app",
+  "bwapp-deployments": [
+    "Prod",
+    "Stag",
+    "Dev1",
+    "Dev2",
+    "Dev3",
+    "DevAdam"
+  ],
+  "bwapp-dns-delegated": true,
+  "bwapp-primary-region": "eu-central-1",
+  "bwapp-qualifier": "bwapp",
+  "bwapp-secondary-regions": [
+    "eu-north-1"
+  ]
+}
