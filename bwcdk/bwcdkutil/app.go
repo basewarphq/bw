@@ -43,26 +43,42 @@ func SetupApp[S any](
 	}
 	StoreConfig(app, config)
 
-	// Create shared primary region stack first
+	// Create shared primary region stack first.
 	primarySharedStack := NewStackFromConfig(app, config, config.PrimaryRegion)
 	primaryShared := newShared(primarySharedStack)
 
-	// Create secondary shared region stacks with dependency on primary
+	// Create secondary shared region stacks with dependency on primary.
+	// Secondary shared stacks reference resources (like Route53 hosted zone IDs)
+	// stored by the primary shared stack, so they must deploy after it.
+	secondarySharedStacks := []awscdk.Stack{}
 	secondaryShared := map[string]S{}
 	for _, region := range config.SecondaryRegions {
 		secondarySharedStack := NewStackFromConfig(app, config, region)
 		secondaryShared[region] = newShared(secondarySharedStack)
 		secondarySharedStack.AddDependency(primarySharedStack, jsii.String("Primary region must deploy first"))
+		secondarySharedStacks = append(secondarySharedStacks, secondarySharedStack)
 	}
 
-	// Create stacks for each deployment
+	// Create stacks for each deployment.
 	for _, deploymentIdent := range config.Deployments {
 		primaryDeploymentStack := NewStackFromConfig(app, config, config.PrimaryRegion, deploymentIdent)
 		newDeployment(primaryDeploymentStack, primaryShared, deploymentIdent)
-		primaryDeploymentStack.AddDependency(primarySharedStack,
-			jsii.String("Primary shared stack must deploy first"))
 
-		// Secondary region stacks for each deployment
+		// The primary deployment stack depends on ALL shared stacks (primary and secondary).
+		// This ensures all shared infrastructure is fully provisioned across all regions
+		// before any deployment begins. This creates a clean two-phase deployment:
+		//   Phase 1: All shared stacks (primary → secondary)
+		//   Phase 2: All deployment stacks (primary → secondary)
+		// This simplifies reasoning about deployment order and ensures secondary deployments
+		// can reference resources from their regional shared stacks.
+		primaryDeploymentStack.AddDependency(primarySharedStack,
+			jsii.String("All shared stacks must deploy before deployments"))
+		for _, secondarySharedStack := range secondarySharedStacks {
+			primaryDeploymentStack.AddDependency(secondarySharedStack,
+				jsii.String("All shared stacks must deploy before deployments"))
+		}
+
+		// Secondary deployment stacks depend on the primary deployment stack.
 		for _, region := range config.SecondaryRegions {
 			secondaryDeploymentStack := NewStackFromConfig(app, config, region, deploymentIdent)
 			newDeployment(secondaryDeploymentStack, secondaryShared[region], deploymentIdent)
