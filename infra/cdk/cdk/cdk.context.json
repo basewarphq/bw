@@ -1,7 +1,4 @@
 {
-  "@aws-cdk/core:permissionsBoundary": {
-    "name": "bwapp-permissions-boundary"
-  },
   "acknowledged-issue-numbers": [
     34892
   ],
