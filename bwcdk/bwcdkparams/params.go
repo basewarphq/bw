@@ -14,6 +14,13 @@ import (
 	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
 )
 
+// LookupLocal retrieves a parameter from SSM Parameter Store within the same region.
+// Use this for same-region cross-stack references. For cross-region lookups, use Lookup.
+func LookupLocal(scope constructs.Construct, namespace string, name string) *string {
+	return awsssm.StringParameter_ValueForStringParameter(scope,
+		ParameterName(scope, namespace, name), nil)
+}
+
 // ParameterName generates a hierarchical SSM parameter path.
 // Returns a path like /{qualifier}/{namespace}/{name}.
 func ParameterName(scope constructs.Construct, namespace string, name string) *string {

@@ -12,9 +12,7 @@
 //	        Prefix: "myapp-",
 //	    },
 //	        func(stack awscdk.Stack) *Shared { return NewShared(stack) },
-//	        func(stack awscdk.Stack, shared *Shared, deploymentIdent string) {
-//	            NewDeployment(stack, shared, deploymentIdent)
-//	        },
+//	        NewDeployment,
 //	    )
 //
 //	    app.Synth(nil)

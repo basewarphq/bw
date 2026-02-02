@@ -18,14 +18,17 @@ func Example_dnsConstruct() {
 		"myapp-qualifier":         "myapp",
 		"myapp-primary-region":    "us-east-1",
 		"myapp-secondary-regions": []any{"eu-west-1"},
-		"myapp-deployments":       []any{"Dev"},
+		"myapp-deployments":       []any{"Dev", "Prod"},
 		"myapp-base-domain-name":  "example.com",
 	}
 
 	app := awscdk.NewApp(&awscdk.AppProps{Context: &ctx})
-	cfg, _ := bwcdkutil.NewConfig(app, bwcdkutil.AppConfig{
+	cfg, err := bwcdkutil.NewConfig(app, bwcdkutil.AppConfig{
 		Prefix: "myapp-",
 	})
+	if err != nil {
+		panic(err)
+	}
 	bwcdkutil.StoreConfig(app, cfg)
 
 	stack := awscdk.NewStack(app, jsii.String("DnsStack"), &awscdk.StackProps{
@@ -34,7 +37,7 @@ func Example_dnsConstruct() {
 
 	const namespace = "dns"
 
-	if bwcdkutil.IsPrimaryRegion(stack, "us-east-1") {
+	if cfg.IsPrimaryRegion("us-east-1") {
 		zone := awsroute53.NewHostedZone(stack, jsii.String("HostedZone"),
 			&awsroute53.HostedZoneProps{
 				ZoneName: jsii.String("example.com"),
@@ -62,14 +65,17 @@ func Example_identityConstruct() {
 		"myapp-qualifier":         "myapp",
 		"myapp-primary-region":    "us-east-1",
 		"myapp-secondary-regions": []any{"eu-west-1"},
-		"myapp-deployments":       []any{"Dev"},
+		"myapp-deployments":       []any{"Dev", "Prod"},
 		"myapp-base-domain-name":  "example.com",
 	}
 
 	app := awscdk.NewApp(&awscdk.AppProps{Context: &ctx})
-	cfg, _ := bwcdkutil.NewConfig(app, bwcdkutil.AppConfig{
+	cfg, err := bwcdkutil.NewConfig(app, bwcdkutil.AppConfig{
 		Prefix: "myapp-",
 	})
+	if err != nil {
+		panic(err)
+	}
 	bwcdkutil.StoreConfig(app, cfg)
 
 	stack := awscdk.NewStack(app, jsii.String("IdentityStack"), &awscdk.StackProps{
@@ -78,7 +84,7 @@ func Example_identityConstruct() {
 
 	const namespace = "identity"
 
-	if bwcdkutil.IsPrimaryRegion(stack, "us-east-1") {
+	if cfg.IsPrimaryRegion("us-east-1") {
 		userPool := awscognito.NewUserPool(stack, jsii.String("UserPool"),
 			&awscognito.UserPoolProps{
 				UserPoolName: jsii.String("my-user-pool"),
@@ -108,14 +114,17 @@ func Example_multipleNamespaces() {
 		"myapp-qualifier":         "myapp",
 		"myapp-primary-region":    "us-east-1",
 		"myapp-secondary-regions": []any{"eu-west-1"},
-		"myapp-deployments":       []any{"Dev"},
+		"myapp-deployments":       []any{"Dev", "Prod"},
 		"myapp-base-domain-name":  "example.com",
 	}
 
 	app := awscdk.NewApp(&awscdk.AppProps{Context: &ctx})
-	cfg, _ := bwcdkutil.NewConfig(app, bwcdkutil.AppConfig{
+	cfg, err := bwcdkutil.NewConfig(app, bwcdkutil.AppConfig{
 		Prefix: "myapp-",
 	})
+	if err != nil {
+		panic(err)
+	}
 	bwcdkutil.StoreConfig(app, cfg)
 
 	stack := awscdk.NewStack(app, jsii.String("MultiStack"), &awscdk.StackProps{

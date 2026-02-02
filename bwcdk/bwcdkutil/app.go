@@ -10,8 +10,9 @@ import (
 type SharedConstructor[S any] func(stack awscdk.Stack) S
 
 // DeploymentConstructor creates deployment-specific infrastructure in a given stack.
-// It receives the shared construct from the same region and the deployment identifier.
-type DeploymentConstructor[S any] func(stack awscdk.Stack, shared S, deploymentIdent string)
+// It receives the deployment identifier. Resources from shared stacks should be
+// looked up via SSM Parameter Store to avoid cross-stack references.
+type DeploymentConstructor func(stack awscdk.Stack, deploymentIdent string)
 
 // AppConfig configures the CDK app setup.
 type AppConfig struct {
@@ -34,7 +35,7 @@ func SetupApp[S any](
 	app awscdk.App,
 	cfg AppConfig,
 	newShared SharedConstructor[S],
-	newDeployment DeploymentConstructor[S],
+	newDeployment DeploymentConstructor,
 ) {
 	// Validate all context values upfront and store in construct tree
 	config, err := NewConfig(app, cfg)
@@ -45,16 +46,15 @@ func SetupApp[S any](
 
 	// Create shared primary region stack first.
 	primarySharedStack := NewStackFromConfig(app, config, config.PrimaryRegion)
-	primaryShared := newShared(primarySharedStack)
+	_ = newShared(primarySharedStack)
 
 	// Create secondary shared region stacks with dependency on primary.
 	// Secondary shared stacks reference resources (like Route53 hosted zone IDs)
 	// stored by the primary shared stack, so they must deploy after it.
 	secondarySharedStacks := []awscdk.Stack{}
-	secondaryShared := map[string]S{}
 	for _, region := range config.SecondaryRegions {
 		secondarySharedStack := NewStackFromConfig(app, config, region)
-		secondaryShared[region] = newShared(secondarySharedStack)
+		_ = newShared(secondarySharedStack)
 		secondarySharedStack.AddDependency(primarySharedStack, jsii.String("Primary region must deploy first"))
 		secondarySharedStacks = append(secondarySharedStacks, secondarySharedStack)
 	}
@@ -62,7 +62,7 @@ func SetupApp[S any](
 	// Create stacks for each deployment.
 	for _, deploymentIdent := range config.Deployments {
 		primaryDeploymentStack := NewStackFromConfig(app, config, config.PrimaryRegion, deploymentIdent)
-		newDeployment(primaryDeploymentStack, primaryShared, deploymentIdent)
+		newDeployment(primaryDeploymentStack, deploymentIdent)
 
 		// The primary deployment stack depends on ALL shared stacks (primary and secondary).
 		// This ensures all shared infrastructure is fully provisioned across all regions
@@ -81,7 +81,7 @@ func SetupApp[S any](
 		// Secondary deployment stacks depend on the primary deployment stack.
 		for _, region := range config.SecondaryRegions {
 			secondaryDeploymentStack := NewStackFromConfig(app, config, region, deploymentIdent)
-			newDeployment(secondaryDeploymentStack, secondaryShared[region], deploymentIdent)
+			newDeployment(secondaryDeploymentStack, deploymentIdent)
 			secondaryDeploymentStack.AddDependency(primaryDeploymentStack,
 				jsii.String("Primary region deployment must deploy first"))
 		}

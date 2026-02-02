@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestParseInvokePath(t *testing.T) {
+func TestParsePassThroughPath(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -79,7 +79,7 @@ func TestParseInvokePath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			suffix, err := parseInvokePath(tt.path)
+			suffix, err := parsePassThroughPath(tt.path)
 
 			if tt.wantErr {
 				if err == nil {

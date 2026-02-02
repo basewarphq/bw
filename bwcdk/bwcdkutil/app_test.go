@@ -38,7 +38,7 @@ func TestSetupApp_NoSecondaryRegions(t *testing.T) {
 			sharedCalls = append(sharedCalls, *stack.Region())
 			return &testShared{Region: *stack.Region()}
 		},
-		func(stack awscdk.Stack, shared *testShared, deploymentIdent string) {
+		func(stack awscdk.Stack, deploymentIdent string) {
 			deploymentCalls = append(deploymentCalls, struct{ Region, Deployment string }{
 				Region:     *stack.Region(),
 				Deployment: deploymentIdent,
@@ -95,7 +95,7 @@ func TestSetupApp_WithSecondaryRegions(t *testing.T) {
 			sharedCalls = append(sharedCalls, *stack.Region())
 			return &testShared{Region: *stack.Region()}
 		},
-		func(stack awscdk.Stack, shared *testShared, deploymentIdent string) {
+		func(stack awscdk.Stack, deploymentIdent string) {
 			deploymentCalls = append(deploymentCalls, struct{ Region, Deployment string }{
 				Region:     *stack.Region(),
 				Deployment: deploymentIdent,

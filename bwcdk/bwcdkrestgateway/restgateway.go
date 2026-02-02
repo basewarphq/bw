@@ -64,9 +64,15 @@ type Props struct {
 	// DeploymentIdent is the deployment identifier (e.g., "dev", "prod").
 	// Required.
 	DeploymentIdent *string
-	// Authorizer enables a Lambda REQUEST authorizer for all public routes.
+	// Authorizer enables a Lambda TOKEN authorizer for all public routes.
 	// When set, creates a separate Lambda instance using the same Entry,
 	// configured to handle requests at /l/authorize.
+	//
+	// Only TOKEN authorizers are supported with AWS Lambda Web Adapter (LWA).
+	// REQUEST authorizers share HTTP-like fields (httpMethod, path, headers,
+	// requestContext) with proxy events, causing LWA to misroute them as
+	// regular HTTP requests instead of using pass-through mode.
+	//
 	// Optional.
 	Authorizer *AuthorizerProps
 }
@@ -104,7 +110,9 @@ func New(scope constructs.Construct, props Props) RestGateway {
 		con.authorizerLambda = bwcdklwalambda.New(scope, bwcdklwalambda.Props{
 			Entry:       props.Entry,
 			Environment: props.Environment,
-			InvokePath:  jsii.String("/l/authorize"),
+			// TOKEN authorizer events don't share HTTP-like fields, so LWA
+			// correctly routes them via AWS_LWA_PASS_THROUGH_PATH.
+			PassThroughPath: jsii.String("/l/authorize"),
 		})
 	}
 
@@ -157,10 +165,10 @@ func New(scope constructs.Construct, props Props) RestGateway {
 
 	var authorizer awsapigateway.IAuthorizer
 	if props.Authorizer != nil {
-		authorizer = awsapigateway.NewRequestAuthorizer(scope, jsii.String("Authorizer"),
-			&awsapigateway.RequestAuthorizerProps{
+		// Use TOKEN authorizer (not REQUEST) - REQUEST authorizers are misrouted by LWA.
+		authorizer = awsapigateway.NewTokenAuthorizer(scope, jsii.String("Authorizer"),
+			&awsapigateway.TokenAuthorizerProps{
 				Handler:         con.authorizerLambda.Function(),
-				IdentitySources: &[]*string{jsii.String("method.request.header.Authorization")},
 				ResultsCacheTtl: awscdk.Duration_Minutes(jsii.Number(5)),
 			})
 	}
@@ -191,15 +199,15 @@ func New(scope constructs.Construct, props Props) RestGateway {
 	})
 
 	// Export endpoints as stack outputs for easy retrieval via AWS CLI.
-	// Output keys use "GatewayURL" prefix with gateway name for predictable keys.
-	gatewayName := con.lambda.Name()
+	// Output keys include subdomain to ensure uniqueness when multiple gateways exist.
+	outputPrefix := con.lambda.Name() + strcase.ToCamel(*props.Subdomain)
 	awscdk.NewCfnOutput(scope, jsii.String("GatewayURLRegional"), &awscdk.CfnOutputProps{
-		Key:         jsii.String(gatewayName + "GatewayURLRegional"),
+		Key:         jsii.String(outputPrefix + "GatewayURLRegional"),
 		Description: jsii.String("Regional API Gateway endpoint URL"),
 		Value:       jsii.String("https://" + con.domainName),
 	})
 	awscdk.NewCfnOutput(scope, jsii.String("GatewayURLGlobal"), &awscdk.CfnOutputProps{
-		Key:         jsii.String(gatewayName + "GatewayURLGlobal"),
+		Key:         jsii.String(outputPrefix + "GatewayURLGlobal"),
 		Description: jsii.String("Global API Gateway endpoint URL (latency-based routing)"),
 		Value:       jsii.String("https://" + con.globalDomainName),
 	})

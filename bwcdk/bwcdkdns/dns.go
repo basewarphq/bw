@@ -14,6 +14,22 @@ import (
 	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
 )
 
+// LookupHostedZone retrieves the hosted zone from SSM Parameter Store.
+// Use this to get a hosted zone reference without creating cross-stack dependencies.
+// The zoneName parameter should match the zone name used when creating the DNS construct.
+// If nil, uses the base domain name from config.
+func LookupHostedZone(scope constructs.Construct, zoneName *string) awsroute53.IHostedZone {
+	if zoneName == nil {
+		zoneName = bwcdkutil.BaseDomainNamePtr(scope)
+	}
+	hostedZoneID := agcdkparams.LookupLocal(scope, paramsNamespace, "hosted-zone-id")
+	return awsroute53.HostedZone_FromHostedZoneAttributes(scope, jsii.String("LookupHostedZone"),
+		&awsroute53.HostedZoneAttributes{
+			HostedZoneId: hostedZoneID,
+			ZoneName:     zoneName,
+		})
+}
+
 // NameServersOutputKey is the CloudFormation output key for the hosted zone's NS records.
 // Use this with `aws cloudformation describe-stacks` to retrieve the name servers.
 const NameServersOutputKey = "HostedZoneNameServers"
@@ -74,6 +90,10 @@ func New(scope constructs.Construct, props Props) DNS {
 	} else {
 		hostedZoneID := agcdkparams.Lookup(scope, "LookupHostedZoneID",
 			paramsNamespace, "hosted-zone-id", "hosted-zone-id-lookup")
+
+		// Store locally so deployment stacks in this region can use LookupLocal.
+		agcdkparams.Store(scope, "HostedZoneIDParam", paramsNamespace, "hosted-zone-id",
+			hostedZoneID)
 
 		con.hostedZone = awsroute53.HostedZone_FromHostedZoneAttributes(scope, jsii.String("HostedZone"),
 			&awsroute53.HostedZoneAttributes{

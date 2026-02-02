@@ -110,7 +110,7 @@ func TestParseEntry(t *testing.T) {
 	}
 }
 
-func TestNew_WithoutInvokePath(t *testing.T) {
+func TestNew_WithoutPassThroughPath(t *testing.T) {
 	defer jsii.Close()
 
 	app := awscdk.NewApp(nil)
@@ -135,7 +135,7 @@ func TestNew_WithoutInvokePath(t *testing.T) {
 	}
 }
 
-func TestNew_WithInvokePath(t *testing.T) {
+func TestNew_WithPassThroughPath(t *testing.T) {
 	defer jsii.Close()
 
 	app := awscdk.NewApp(nil)
@@ -146,8 +146,8 @@ func TestNew_WithInvokePath(t *testing.T) {
 	})
 
 	lambda := bwcdklwalambda.New(stack, bwcdklwalambda.Props{
-		Entry:      jsii.String(testEntry),
-		InvokePath: jsii.String("/l/authorize"),
+		Entry:           jsii.String(testEntry),
+		PassThroughPath: jsii.String("/l/authorize"),
 	})
 
 	if lambda.Name() != "BackendCorebackAuthorize" {
@@ -161,7 +161,7 @@ func TestNew_WithInvokePath(t *testing.T) {
 	}
 }
 
-func TestNew_WithInvokePathKebabCase(t *testing.T) {
+func TestNew_WithPassThroughPathKebabCase(t *testing.T) {
 	defer jsii.Close()
 
 	app := awscdk.NewApp(nil)
@@ -172,8 +172,8 @@ func TestNew_WithInvokePathKebabCase(t *testing.T) {
 	})
 
 	lambda := bwcdklwalambda.New(stack, bwcdklwalambda.Props{
-		Entry:      jsii.String(testEntry),
-		InvokePath: jsii.String("/l/some-handler"),
+		Entry:           jsii.String(testEntry),
+		PassThroughPath: jsii.String("/l/some-handler"),
 	})
 
 	if lambda.Name() != "BackendCorebackSomeHandler" {
@@ -202,12 +202,12 @@ func TestNew_InvalidEntry(t *testing.T) {
 	})
 }
 
-func TestNew_InvalidInvokePath(t *testing.T) {
+func TestNew_InvalidPassThroughPath(t *testing.T) {
 	defer jsii.Close()
 
 	defer func() {
 		if r := recover(); r == nil {
-			t.Errorf("expected panic for invalid invoke path")
+			t.Errorf("expected panic for invalid pass-through path")
 		}
 	}()
 
@@ -219,7 +219,7 @@ func TestNew_InvalidInvokePath(t *testing.T) {
 	})
 
 	bwcdklwalambda.New(stack, bwcdklwalambda.Props{
-		Entry:      jsii.String(testEntry),
-		InvokePath: jsii.String("/authorize"), // missing /l/ prefix
+		Entry:           jsii.String(testEntry),
+		PassThroughPath: jsii.String("/authorize"), // missing /l/ prefix
 	})
 }

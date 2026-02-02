@@ -45,23 +45,24 @@ type Props struct {
 	// Environment variables to pass to the function.
 	// PORT is set automatically for LWA.
 	Environment *map[string]*string
-	// InvokePath sets the path LWA routes requests to via AWS_LWA_INVOKE_PATH.
-	// When set, LWA forwards all invocations to this path on the HTTP server.
-	// Useful for Lambda authorizers that handle requests at a specific path.
+	// PassThroughPath sets AWS_LWA_PASS_THROUGH_PATH for non-HTTP event triggers.
+	// When set, LWA POSTs the raw Lambda event JSON to this path and returns
+	// the response body directly to Lambda (without HTTP wrapping).
+	// Use this for Lambda authorizers and other non-HTTP triggers like SQS/SNS.
 	// Optional.
-	InvokePath *string
+	PassThroughPath *string
 }
 
-// parseInvokePath validates InvokePath and returns a suffix for construct naming.
+// parsePassThroughPath validates PassThroughPath and returns a suffix for construct naming.
 // Path must match pattern "/l/<handler>" where handler is kebab-case.
-func parseInvokePath(path string) (suffix string, err error) {
+func parsePassThroughPath(path string) (suffix string, err error) {
 	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
 	if len(parts) != 2 || parts[0] != "l" || parts[1] == "" {
-		return "", fmt.Errorf("InvokePath must match pattern /l/<handler>, got %q", path)
+		return "", fmt.Errorf("PassThroughPath must match pattern /l/<handler>, got %q", path)
 	}
 	handler := parts[1]
 	if handler != strcase.ToKebab(handler) {
-		return "", fmt.Errorf("InvokePath handler must be kebab-case, got %q", handler)
+		return "", fmt.Errorf("PassThroughPath handler must be kebab-case, got %q", handler)
 	}
 	return strcase.ToCamel(handler), nil
 }
@@ -106,8 +107,8 @@ func New(scope constructs.Construct, props Props) Lambda {
 		panic(err)
 	}
 	scopeName := strcase.ToCamel(component) + strcase.ToCamel(command)
-	if props.InvokePath != nil {
-		suffix, err := parseInvokePath(*props.InvokePath)
+	if props.PassThroughPath != nil {
+		suffix, err := parsePassThroughPath(*props.PassThroughPath)
 		if err != nil {
 			panic(err)
 		}
@@ -124,8 +125,8 @@ func New(scope constructs.Construct, props Props) Lambda {
 	}
 	env["PORT"] = jsii.String("8080")
 	env["AWS_LWA_READINESS_CHECK_PATH"] = jsii.String("/health")
-	if props.InvokePath != nil {
-		env["AWS_LWA_INVOKE_PATH"] = props.InvokePath
+	if props.PassThroughPath != nil {
+		env["AWS_LWA_PASS_THROUGH_PATH"] = props.PassThroughPath
 	}
 
 	con.logGroup = awslogs.NewLogGroup(scope, jsii.String("LogGroup"), &awslogs.LogGroupProps{

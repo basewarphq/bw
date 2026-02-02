@@ -35,16 +35,14 @@ func NewShared(stack awscdk.Stack) *Shared {
 }
 
 // NewDeployment creates deployment-specific infrastructure.
-func NewDeployment(stack awscdk.Stack, shared *Shared, deploymentIdent string) *Deployment {
-	// Use shared.Bucket or other shared resources here
-	_ = shared.Bucket
+// Resources from shared stacks should be looked up via SSM Parameter Store
+// to avoid cross-stack references.
+func NewDeployment(stack awscdk.Stack, deploymentIdent string) {
 	_ = deploymentIdent
 
 	// Can also get the full Config if needed
 	cfg := bwcdkutil.ConfigFromScope(stack)
 	_ = cfg.AllRegions()
-
-	return &Deployment{}
 }
 
 // Example_setupApp demonstrates how to use SetupApp to configure a multi-region,
@@ -78,9 +76,7 @@ func Example_setupApp() {
 		Prefix: "myapp-",
 	},
 		NewShared,
-		func(stack awscdk.Stack, shared *Shared, deploymentIdent string) {
-			NewDeployment(stack, shared, deploymentIdent)
-		},
+		NewDeployment,
 	)
 	// Output:
 }
