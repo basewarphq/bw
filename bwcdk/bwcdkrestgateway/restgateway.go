@@ -160,6 +160,20 @@ func New(scope constructs.Construct, props Props) RestGateway {
 		SetIdentifier: jsii.Sprintf("%s-%s", con.globalDomainName, region),
 	})
 
+	// Export endpoints as stack outputs for easy retrieval via AWS CLI.
+	// Output keys use "GatewayURL" prefix with gateway name for predictable keys.
+	gatewayName := con.lambda.Name()
+	awscdk.NewCfnOutput(scope, jsii.String("GatewayURLRegional"), &awscdk.CfnOutputProps{
+		Key:         jsii.String(gatewayName + "GatewayURLRegional"),
+		Description: jsii.String("Regional API Gateway endpoint URL"),
+		Value:       jsii.String("https://" + con.domainName),
+	})
+	awscdk.NewCfnOutput(scope, jsii.String("GatewayURLGlobal"), &awscdk.CfnOutputProps{
+		Key:         jsii.String(gatewayName + "GatewayURLGlobal"),
+		Description: jsii.String("Global API Gateway endpoint URL (latency-based routing)"),
+		Value:       jsii.String("https://" + con.globalDomainName),
+	})
+
 	return con
 }
 
