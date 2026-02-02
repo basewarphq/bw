@@ -77,7 +77,7 @@ func TestSetupApp_WithSecondaryRegions(t *testing.T) {
 		"myapp-qualifier":         "myapp",
 		"myapp-primary-region":    "us-east-1",
 		"myapp-secondary-regions": []any{"eu-west-1"},
-		"myapp-deployments":       []any{"Dev"},
+		"myapp-deployments":       []any{"Prod"},
 		"myapp-base-domain-name":  "example.com",
 	}
 
@@ -114,14 +114,14 @@ func TestSetupApp_WithSecondaryRegions(t *testing.T) {
 		t.Errorf("shared call 1 region = %q, want %q", sharedCalls[1], "eu-west-1")
 	}
 
-	// Should have deployment calls for Dev in both regions
+	// Should have deployment calls for Prod in both regions
 	if len(deploymentCalls) != 2 {
 		t.Fatalf("expected 2 deployment calls, got %d: %v", len(deploymentCalls), deploymentCalls)
 	}
 
 	expectedDeployments := []struct{ Region, Deployment string }{
-		{"us-east-1", "Dev"},
-		{"eu-west-1", "Dev"},
+		{"us-east-1", "Prod"},
+		{"eu-west-1", "Prod"},
 	}
 	for i, want := range expectedDeployments {
 		if deploymentCalls[i] != want {

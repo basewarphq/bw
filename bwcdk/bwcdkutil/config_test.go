@@ -40,7 +40,7 @@ func TestNewConfig(t *testing.T) {
 				"myapp-qualifier":         "myapp",
 				"myapp-primary-region":    "us-east-1",
 				"myapp-secondary-regions": []any{},
-				"myapp-deployments":       []any{"Dev"},
+				"myapp-deployments":       []any{"Prod"},
 				"myapp-base-domain-name":  "example.com",
 			},
 			appConfig: bwcdkutil.AppConfig{
@@ -68,7 +68,7 @@ func TestNewConfig(t *testing.T) {
 				"myapp-qualifier":         "thisqualifieristoolong",
 				"myapp-primary-region":    "us-east-1",
 				"myapp-secondary-regions": []any{},
-				"myapp-deployments":       []any{"Dev"},
+				"myapp-deployments":       []any{"Prod"},
 				"myapp-base-domain-name":  "example.com",
 			},
 			appConfig: bwcdkutil.AppConfig{
@@ -83,7 +83,7 @@ func TestNewConfig(t *testing.T) {
 				"myapp-qualifier":         "myapp",
 				"myapp-primary-region":    "us-east-1",
 				"myapp-secondary-regions": []any{},
-				"myapp-deployments":       []any{"Dev"},
+				"myapp-deployments":       []any{"Prod"},
 				"myapp-base-domain-name":  "not a valid domain",
 			},
 			appConfig: bwcdkutil.AppConfig{
@@ -208,7 +208,7 @@ func TestConfig_AllRegions(t *testing.T) {
 			"myapp-qualifier":         "myapp",
 			"myapp-primary-region":    "us-east-1",
 			"myapp-secondary-regions": []any{"eu-west-1", "ap-southeast-1"},
-			"myapp-deployments":       []any{"Dev"},
+			"myapp-deployments":       []any{"Prod"},
 			"myapp-base-domain-name":  "example.com",
 		},
 	})
@@ -243,7 +243,7 @@ func TestConfig_RegionIdent(t *testing.T) {
 			"myapp-qualifier":         "myapp",
 			"myapp-primary-region":    "us-east-1",
 			"myapp-secondary-regions": []any{"eu-west-1"},
-			"myapp-deployments":       []any{"Dev"},
+			"myapp-deployments":       []any{"Prod"},
 			"myapp-base-domain-name":  "example.com",
 		},
 	})

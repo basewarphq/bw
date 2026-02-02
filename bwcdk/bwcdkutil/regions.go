@@ -84,3 +84,31 @@ func AllKnownRegions() []string {
 	slices.Sort(regions)
 	return regions
 }
+
+// IsProdDeployment returns true if the deployment identifier represents production.
+func IsProdDeployment(deployment string) bool {
+	return strings.EqualFold(deployment, "prod")
+}
+
+// RegionalSubdomain builds a region-specific subdomain for a deployment.
+// Format: "{deployment}-{regionIdent}-{subdomain}" (e.g., "dev-euw1-api").
+// For prod deployments, the deployment prefix is omitted: "{regionIdent}-{subdomain}" (e.g., "euw1-api").
+// All parts are lowercased for DNS compatibility.
+func RegionalSubdomain(deployment, region, subdomain string) string {
+	regionIdent := RegionIdentLower(region)
+	if IsProdDeployment(deployment) {
+		return regionIdent + "-" + strings.ToLower(subdomain)
+	}
+	return strings.ToLower(deployment) + "-" + regionIdent + "-" + strings.ToLower(subdomain)
+}
+
+// GlobalSubdomain builds a global subdomain for a deployment.
+// Format: "{deployment}-{subdomain}" (e.g., "dev-api").
+// For prod deployments, the deployment prefix is omitted: "{subdomain}" (e.g., "api").
+// All parts are lowercased for DNS compatibility.
+func GlobalSubdomain(deployment, subdomain string) string {
+	if IsProdDeployment(deployment) {
+		return strings.ToLower(subdomain)
+	}
+	return strings.ToLower(deployment) + "-" + strings.ToLower(subdomain)
+}

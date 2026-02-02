@@ -110,6 +110,18 @@ func NewConfig(scope constructs.Construct, acfg AppConfig) (*Config, error) {
 		}
 	}
 
+	// Validate that at least one deployment is a prod deployment
+	hasProd := false
+	for _, deployment := range cfg.Deployments {
+		if IsProdDeployment(deployment) {
+			hasProd = true
+			break
+		}
+	}
+	if !hasProd {
+		readErrs = append(readErrs, "at least one deployment must be named \"Prod\"")
+	}
+
 	if len(readErrs) > 0 {
 		return nil, errors.Errorf("CDK context read errors:\n  - %s", strings.Join(readErrs, "\n  - "))
 	}

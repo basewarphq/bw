@@ -1,12 +1,12 @@
 package agcdkparams_test
 
 import (
-	"github.com/advdv/ago/agcdk/agcdkparams"
-	"github.com/advdv/ago/agcdkutil"
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscognito"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53"
 	"github.com/aws/jsii-runtime-go"
+	agcdkparams "github.com/basewarphq/bwapp/bwcdk/bwcdkparams"
+	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
 )
 
 // Example_dnsConstruct demonstrates storing and looking up DNS-related parameters.
@@ -23,11 +23,10 @@ func Example_dnsConstruct() {
 	}
 
 	app := awscdk.NewApp(&awscdk.AppProps{Context: &ctx})
-	cfg, _ := agcdkutil.NewConfig(app, agcdkutil.AppConfig{
-		Prefix:         "myapp-",
-		DeployersGroup: "deployers",
+	cfg, _ := bwcdkutil.NewConfig(app, bwcdkutil.AppConfig{
+		Prefix: "myapp-",
 	})
-	agcdkutil.StoreConfig(app, cfg)
+	bwcdkutil.StoreConfig(app, cfg)
 
 	stack := awscdk.NewStack(app, jsii.String("DnsStack"), &awscdk.StackProps{
 		Env: &awscdk.Environment{Region: jsii.String("us-east-1")},
@@ -35,7 +34,7 @@ func Example_dnsConstruct() {
 
 	const namespace = "dns"
 
-	if agcdkutil.IsPrimaryRegion(stack, "us-east-1") {
+	if bwcdkutil.IsPrimaryRegion(stack, "us-east-1") {
 		zone := awsroute53.NewHostedZone(stack, jsii.String("HostedZone"),
 			&awsroute53.HostedZoneProps{
 				ZoneName: jsii.String("example.com"),
@@ -68,11 +67,10 @@ func Example_identityConstruct() {
 	}
 
 	app := awscdk.NewApp(&awscdk.AppProps{Context: &ctx})
-	cfg, _ := agcdkutil.NewConfig(app, agcdkutil.AppConfig{
-		Prefix:         "myapp-",
-		DeployersGroup: "deployers",
+	cfg, _ := bwcdkutil.NewConfig(app, bwcdkutil.AppConfig{
+		Prefix: "myapp-",
 	})
-	agcdkutil.StoreConfig(app, cfg)
+	bwcdkutil.StoreConfig(app, cfg)
 
 	stack := awscdk.NewStack(app, jsii.String("IdentityStack"), &awscdk.StackProps{
 		Env: &awscdk.Environment{Region: jsii.String("us-east-1")},
@@ -80,7 +78,7 @@ func Example_identityConstruct() {
 
 	const namespace = "identity"
 
-	if agcdkutil.IsPrimaryRegion(stack, "us-east-1") {
+	if bwcdkutil.IsPrimaryRegion(stack, "us-east-1") {
 		userPool := awscognito.NewUserPool(stack, jsii.String("UserPool"),
 			&awscognito.UserPoolProps{
 				UserPoolName: jsii.String("my-user-pool"),
@@ -115,11 +113,10 @@ func Example_multipleNamespaces() {
 	}
 
 	app := awscdk.NewApp(&awscdk.AppProps{Context: &ctx})
-	cfg, _ := agcdkutil.NewConfig(app, agcdkutil.AppConfig{
-		Prefix:         "myapp-",
-		DeployersGroup: "deployers",
+	cfg, _ := bwcdkutil.NewConfig(app, bwcdkutil.AppConfig{
+		Prefix: "myapp-",
 	})
-	agcdkutil.StoreConfig(app, cfg)
+	bwcdkutil.StoreConfig(app, cfg)
 
 	stack := awscdk.NewStack(app, jsii.String("MultiStack"), &awscdk.StackProps{
 		Env: &awscdk.Environment{Region: jsii.String("eu-west-1")},
