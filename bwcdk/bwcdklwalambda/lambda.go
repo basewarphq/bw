@@ -18,6 +18,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdklambdagoalpha/v2"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
+	"github.com/basewarphq/bwapp/bwcdk/bwcdkloggroup"
 	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
 	"github.com/iancoleman/strcase"
 )
@@ -129,10 +130,9 @@ func New(scope constructs.Construct, props Props) Lambda {
 		env["AWS_LWA_PASS_THROUGH_PATH"] = props.PassThroughPath
 	}
 
-	con.logGroup = awslogs.NewLogGroup(scope, jsii.String("LogGroup"), &awslogs.LogGroupProps{
-		Retention:     awslogs.RetentionDays_ONE_WEEK,
-		RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
-	})
+	con.logGroup = bwcdkloggroup.New(scope, scopeName+"Logs", bwcdkloggroup.Props{
+		Purpose: jsii.String("Lambda function " + scopeName),
+	}).LogGroup()
 
 	lwaLayerArn := fmt.Sprintf(
 		"arn:aws:lambda:%s:753240598075:layer:LambdaAdapterLayerArm64:%d",

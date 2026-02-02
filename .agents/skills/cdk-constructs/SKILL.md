@@ -263,6 +263,28 @@ awscdk.NewCfnOutput(awscdk.Stack_Of(scope), jsii.String("HostedZoneNameServers")
 
 Use a `const` for the output key if consumers need to reference it programmatically.
 
+## Log Groups
+
+**Always use `bwcdkloggroup` for creating CloudWatch Log Groups.** This ensures:
+- Consistent retention (ONE_WEEK) and removal policy (DESTROY)
+- Automatic CfnOutput export for CLI discoverability (query `*LogGroup` outputs)
+
+```go
+import "github.com/basewarphq/bwapp/bwcdk/bwcdkloggroup"
+
+logGroup := bwcdkloggroup.New(scope, "MyServiceLogs", bwcdkloggroup.Props{
+    Purpose: jsii.String("Lambda function logs"),
+})
+
+// Use logGroup.LogGroup() when passing to other constructs
+lambda := awslambda.NewFunction(scope, jsii.String("Fn"), &awslambda.FunctionProps{
+    LogGroup: logGroup.LogGroup(),
+    // ...
+})
+```
+
+The `id` parameter should be descriptive and unique within the stack (e.g., `"BackendCorebackLogs"`, `"ApiAccessLogs"`).
+
 ## Checklist for New Constructs
 
 - [ ] Package with `bwcdk` prefix (e.g., `bwcdkfoo`)
@@ -280,7 +302,8 @@ Use a `const` for the output key if consumers need to reference it programmatica
 ## Reference Examples
 
 - Global resource: `bwcdk/bwcdkdns/dns.go`
-- Regional resource: `bwcdk/bwcdkcerts/certificates.go`
+- Regional resource: `bwcdk/agcdkcerts/certificates.go`
+- Log groups: `bwcdk/bwcdkloggroup/loggroup.go`
 - Parameters package: `bwcdk/bwcdkparams/params.go`
 - App setup: `bwcdk/bwcdkutil/app.go`
 - Config: `bwcdk/bwcdkutil/config.go`

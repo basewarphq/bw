@@ -16,6 +16,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53targets"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
+	"github.com/basewarphq/bwapp/bwcdk/bwcdkloggroup"
 	"github.com/basewarphq/bwapp/bwcdk/bwcdklwalambda"
 	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
 	"github.com/iancoleman/strcase"
@@ -118,10 +119,10 @@ func New(scope constructs.Construct, props Props) RestGateway {
 
 	apiName := con.lambda.Name() + strcase.ToCamel(*props.DeploymentIdent) + "Gateway"
 
-	con.accessLogGroup = awslogs.NewLogGroup(scope, jsii.String("AccessLogGroup"), &awslogs.LogGroupProps{
-		Retention:     awslogs.RetentionDays_ONE_WEEK,
-		RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
-	})
+	accessLogID := con.lambda.Name() + strcase.ToCamel(*props.Subdomain) + "AccessLogs"
+	con.accessLogGroup = bwcdkloggroup.New(scope, accessLogID, bwcdkloggroup.Props{
+		Purpose: jsii.String("API Gateway access logs"),
+	}).LogGroup()
 
 	stack := awscdk.Stack_Of(scope)
 	region := *stack.Region()
