@@ -8,6 +8,7 @@ package bwcdklwalambda
 
 import (
 	"fmt"
+	"maps"
 	"path/filepath"
 	"strings"
 
@@ -44,6 +45,25 @@ type Props struct {
 	// Environment variables to pass to the function.
 	// PORT is set automatically for LWA.
 	Environment *map[string]*string
+	// InvokePath sets the path LWA routes requests to via AWS_LWA_INVOKE_PATH.
+	// When set, LWA forwards all invocations to this path on the HTTP server.
+	// Useful for Lambda authorizers that handle requests at a specific path.
+	// Optional.
+	InvokePath *string
+}
+
+// parseInvokePath validates InvokePath and returns a suffix for construct naming.
+// Path must match pattern "/l/<handler>" where handler is kebab-case.
+func parseInvokePath(path string) (suffix string, err error) {
+	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	if len(parts) != 2 || parts[0] != "l" || parts[1] == "" {
+		return "", fmt.Errorf("InvokePath must match pattern /l/<handler>, got %q", path)
+	}
+	handler := parts[1]
+	if handler != strcase.ToKebab(handler) {
+		return "", fmt.Errorf("InvokePath handler must be kebab-case, got %q", handler)
+	}
+	return strcase.ToCamel(handler), nil
 }
 
 // ParseEntry extracts component and command from entry path.
@@ -86,6 +106,13 @@ func New(scope constructs.Construct, props Props) Lambda {
 		panic(err)
 	}
 	scopeName := strcase.ToCamel(component) + strcase.ToCamel(command)
+	if props.InvokePath != nil {
+		suffix, err := parseInvokePath(*props.InvokePath)
+		if err != nil {
+			panic(err)
+		}
+		scopeName += suffix
+	}
 	scope = constructs.NewConstruct(scope, jsii.String(scopeName))
 	con := &lambda{name: scopeName}
 
@@ -93,11 +120,13 @@ func New(scope constructs.Construct, props Props) Lambda {
 
 	env := make(map[string]*string)
 	if props.Environment != nil {
-		for k, v := range *props.Environment {
-			env[k] = v
-		}
+		maps.Copy(env, *props.Environment)
 	}
 	env["PORT"] = jsii.String("8080")
+	env["AWS_LWA_READINESS_CHECK_PATH"] = jsii.String("/health")
+	if props.InvokePath != nil {
+		env["AWS_LWA_INVOKE_PATH"] = props.InvokePath
+	}
 
 	con.logGroup = awslogs.NewLogGroup(scope, jsii.String("LogGroup"), &awslogs.LogGroupProps{
 		Retention:     awslogs.RetentionDays_ONE_WEEK,

@@ -18,6 +18,7 @@ import (
 	"github.com/aws/jsii-runtime-go"
 	"github.com/basewarphq/bwapp/bwcdk/bwcdklwalambda"
 	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
+	"github.com/iancoleman/strcase"
 )
 
 // RestGateway provides access to a REST gateway backed by a Go Lambda function.
@@ -25,6 +26,8 @@ type RestGateway interface {
 	// Lambda returns the underlying LWA Lambda construct.
 	// Use this for internal integrations (SQS, EventBridge, etc.).
 	Lambda() bwcdklwalambda.Lambda
+	// AuthorizerLambda returns the authorizer Lambda construct, if configured.
+	AuthorizerLambda() bwcdklwalambda.Lambda
 	// RestApi returns the API Gateway REST API.
 	RestApi() awsapigateway.RestApi
 	// AccessLogGroup returns the CloudWatch Log Group for API Gateway access logs.
@@ -61,10 +64,19 @@ type Props struct {
 	// DeploymentIdent is the deployment identifier (e.g., "dev", "prod").
 	// Required.
 	DeploymentIdent *string
+	// Authorizer enables a Lambda REQUEST authorizer for all public routes.
+	// When set, creates a separate Lambda instance using the same Entry,
+	// configured to handle requests at /l/authorize.
+	// Optional.
+	Authorizer *AuthorizerProps
 }
+
+// AuthorizerProps configures the Lambda REQUEST authorizer.
+type AuthorizerProps struct{}
 
 type restGateway struct {
 	lambda           bwcdklwalambda.Lambda
+	authorizerLambda bwcdklwalambda.Lambda
 	restApi          awsapigateway.RestApi
 	accessLogGroup   awslogs.ILogGroup
 	domainName       string
@@ -80,7 +92,7 @@ type restGateway struct {
 // A custom domain is configured with format "{deployment}-{region}-{subdomain}.{zone}"
 // (e.g., "dev-euw1-api.basewarp.app"). The execute-api endpoint is disabled.
 func New(scope constructs.Construct, props Props) RestGateway {
-	scope = constructs.NewConstruct(scope, jsii.String("RestGateway"))
+	scope = constructs.NewConstruct(scope, jsii.String(strcase.ToCamel(*props.Subdomain)+"RGw"))
 	con := &restGateway{}
 
 	con.lambda = bwcdklwalambda.New(scope, bwcdklwalambda.Props{
@@ -88,7 +100,15 @@ func New(scope constructs.Construct, props Props) RestGateway {
 		Environment: props.Environment,
 	})
 
-	apiName := con.lambda.Name() + "Gateway"
+	if props.Authorizer != nil {
+		con.authorizerLambda = bwcdklwalambda.New(scope, bwcdklwalambda.Props{
+			Entry:       props.Entry,
+			Environment: props.Environment,
+			InvokePath:  jsii.String("/l/authorize"),
+		})
+	}
+
+	apiName := con.lambda.Name() + strcase.ToCamel(*props.DeploymentIdent) + "Gateway"
 
 	con.accessLogGroup = awslogs.NewLogGroup(scope, jsii.String("AccessLogGroup"), &awslogs.LogGroupProps{
 		Retention:     awslogs.RetentionDays_ONE_WEEK,
@@ -135,8 +155,18 @@ func New(scope constructs.Construct, props Props) RestGateway {
 		Proxy: jsii.Bool(true),
 	})
 
+	var authorizer awsapigateway.IAuthorizer
+	if props.Authorizer != nil {
+		authorizer = awsapigateway.NewRequestAuthorizer(scope, jsii.String("Authorizer"),
+			&awsapigateway.RequestAuthorizerProps{
+				Handler:         con.authorizerLambda.Function(),
+				IdentitySources: &[]*string{jsii.String("method.request.header.Authorization")},
+				ResultsCacheTtl: awscdk.Duration_Minutes(jsii.Number(5)),
+			})
+	}
+
 	for _, route := range *props.PublicRoutes {
-		addRoute(con.restApi.Root(), *route, integration)
+		addRoute(con.restApi.Root(), *route, integration, authorizer)
 	}
 
 	awsroute53.NewARecord(scope, jsii.String("DnsRecord"), &awsroute53.ARecordProps{
@@ -179,7 +209,7 @@ func New(scope constructs.Construct, props Props) RestGateway {
 
 // addRoute adds a route to the REST API.
 // Handles nested paths like "/api/{proxy+}" by creating intermediate resources.
-func addRoute(root awsapigateway.IResource, path string, integration awsapigateway.LambdaIntegration) {
+func addRoute(root awsapigateway.IResource, path string, integration awsapigateway.LambdaIntegration, authorizer awsapigateway.IAuthorizer) {
 	path = strings.TrimPrefix(path, "/")
 	parts := strings.Split(path, "/")
 
@@ -188,11 +218,21 @@ func addRoute(root awsapigateway.IResource, path string, integration awsapigatew
 		resource = resource.AddResource(jsii.String(part), nil)
 	}
 
-	resource.AddMethod(jsii.String("ANY"), integration, nil)
+	var methodOpts *awsapigateway.MethodOptions
+	if authorizer != nil {
+		methodOpts = &awsapigateway.MethodOptions{
+			Authorizer: authorizer,
+		}
+	}
+	resource.AddMethod(jsii.String("ANY"), integration, methodOpts)
 }
 
 func (r *restGateway) Lambda() bwcdklwalambda.Lambda {
 	return r.lambda
+}
+
+func (r *restGateway) AuthorizerLambda() bwcdklwalambda.Lambda {
+	return r.authorizerLambda
 }
 
 func (r *restGateway) RestApi() awsapigateway.RestApi {

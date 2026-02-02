@@ -5,6 +5,7 @@ go 1.25.6
 require (
 	github.com/aws/aws-cdk-go/awscdk/v2 v2.236.0
 	github.com/aws/aws-cdk-go/awscdklambdagoalpha/v2 v2.236.0-alpha.0
+	github.com/aws/aws-lambda-go v1.52.0
 	github.com/aws/constructs-go/constructs/v10 v10.4.5
 	github.com/aws/jsii-runtime-go v1.126.0
 	github.com/cockroachdb/errors v1.12.0
