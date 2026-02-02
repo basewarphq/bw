@@ -30,6 +30,8 @@ type Lambda interface {
 	Function() awscdklambdagoalpha.GoFunction
 	// LogGroup returns the CloudWatch Log Group for the function.
 	LogGroup() awslogs.ILogGroup
+	// Name returns the construct name derived from the entry path.
+	Name() string
 }
 
 // Props configures the Lambda construct.
@@ -44,9 +46,9 @@ type Props struct {
 	Environment *map[string]*string
 }
 
-// parseEntry extracts component and command from entry path.
+// ParseEntry extracts component and command from entry path.
 // Validates pattern "<component>/cmd/<command>".
-func parseEntry(entry string) (component, command string, err error) {
+func ParseEntry(entry string) (component, command string, err error) {
 	parts := strings.Split(filepath.ToSlash(entry), "/")
 
 	for i := len(parts) - 2; i >= 1; i-- {
@@ -66,6 +68,7 @@ func parseEntry(entry string) (component, command string, err error) {
 type lambda struct {
 	function awscdklambdagoalpha.GoFunction
 	logGroup awslogs.ILogGroup
+	name     string
 }
 
 // New creates a Lambda construct with AWS Lambda Web Adapter.
@@ -78,13 +81,13 @@ type lambda struct {
 // and command are used to name the construct (e.g., "backend/cmd/coreback" becomes
 // "BackendCoreback") for better visibility in the AWS Console.
 func New(scope constructs.Construct, props Props) Lambda {
-	component, command, err := parseEntry(*props.Entry)
+	component, command, err := ParseEntry(*props.Entry)
 	if err != nil {
 		panic(err)
 	}
 	scopeName := strcase.ToCamel(component) + strcase.ToCamel(command)
 	scope = constructs.NewConstruct(scope, jsii.String(scopeName))
-	con := &lambda{}
+	con := &lambda{name: scopeName}
 
 	region := *awscdk.Stack_Of(scope).Region()
 
@@ -131,4 +134,8 @@ func (l *lambda) Function() awscdklambdagoalpha.GoFunction {
 
 func (l *lambda) LogGroup() awslogs.ILogGroup {
 	return l.logGroup
+}
+
+func (l *lambda) Name() string {
+	return l.name
 }
