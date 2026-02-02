@@ -133,8 +133,15 @@ func New(scope constructs.Construct, props Props) RestGateway {
 	globalSubdomain := bwcdkutil.GlobalSubdomain(*props.DeploymentIdent, *props.Subdomain)
 	con.globalDomainName = globalSubdomain + "." + zoneName
 
+	// Use REGIONAL endpoint type for multi-region deployments with latency-based routing.
+	// Edge-optimized endpoints cannot be used with Route 53 latency-based routing because
+	// the edge network requires exactly one target per domain name.
+	// See: https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-api-endpoint-types.html
 	con.restApi = awsapigateway.NewRestApi(scope, jsii.String("Api"), &awsapigateway.RestApiProps{
 		RestApiName: jsii.String(apiName),
+		EndpointConfiguration: &awsapigateway.EndpointConfiguration{
+			Types: &[]awsapigateway.EndpointType{awsapigateway.EndpointType_REGIONAL},
+		},
 		DomainName: &awsapigateway.DomainNameOptions{
 			DomainName:   jsii.String(con.domainName),
 			Certificate:  props.Certificate,
