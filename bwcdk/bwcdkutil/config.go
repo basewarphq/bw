@@ -68,6 +68,35 @@ func DNSDelegated(scope constructs.Construct) bool {
 	return ConfigFromScope(scope).DNSDelegated
 }
 
+// DeploymentIdent returns the deployment identifier for the current stack.
+// Returns empty string for shared stacks (which have no deployment identifier).
+// Retrieves the value from the stack's context.
+func DeploymentIdent(scope constructs.Construct) string {
+	stack := awscdk.Stack_Of(scope)
+	val := stack.Node().TryGetContext(jsii.String(deploymentIdentContextKey))
+	if val == nil {
+		return ""
+	}
+	ident, ok := val.(string)
+	if !ok {
+		return ""
+	}
+	return ident
+}
+
+// IsDeploymentStack returns true if the scope is within a deployment stack.
+// Returns false for shared stacks.
+func IsDeploymentStack(scope constructs.Construct) bool {
+	return DeploymentIdent(scope) != ""
+}
+
+// StoreDeploymentIdent stores a deployment identifier in the stack's context.
+// This is primarily for testing; in production, use NewStackFromConfig which
+// stores the identifier automatically.
+func StoreDeploymentIdent(stack awscdk.Stack, deploymentIdent string) {
+	stack.Node().SetContext(jsii.String(deploymentIdentContextKey), deploymentIdent)
+}
+
 // Config holds all CDK context values validated upfront.
 // It centralizes context reading and validation to provide clear error messages.
 type Config struct {
@@ -171,6 +200,9 @@ func (c *Config) BaseDomainNamePtr() *string {
 
 // configContextKey is the well-known key used to store validated Config in the construct tree.
 const configContextKey = "__bwcdkutil_config"
+
+// deploymentIdentContextKey is the well-known key used to store deployment identifier in stack context.
+const deploymentIdentContextKey = "__bwcdkutil_deployment_ident"
 
 // StoreConfig stores a validated Config in the app's context so it can be retrieved
 // anywhere in the construct tree via ConfigFromScope.

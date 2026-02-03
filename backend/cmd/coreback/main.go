@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log"
@@ -9,9 +10,24 @@ import (
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/basewarphq/bwapp/backend/internal/tracing"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 func main() {
+	ctx := context.Background()
+
+	if err := tracing.Init(ctx); err != nil {
+		log.Printf("failed to initialize tracing: %v", err)
+	}
+	defer func() {
+		if err := tracing.Shutdown(ctx); err != nil {
+			log.Printf("failed to shutdown tracing: %v", err)
+		}
+	}()
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", handleHealth)
@@ -19,7 +35,16 @@ func main() {
 	mux.HandleFunc("/g/", handleGateway)
 	mux.HandleFunc("/", handleCatchAll)
 
-	http.ListenAndServe(":"+os.Getenv("PORT"), mux)
+	handler := otelhttp.NewHandler(mux, "coreback",
+		otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
+			return r.Method + " " + r.URL.Path
+		}),
+		otelhttp.WithFilter(func(r *http.Request) bool {
+			// Don't trace LWA readiness checks - they create orphan traces.
+			return r.URL.Path != "/health"
+		}),
+	)
+	http.ListenAndServe(":"+os.Getenv("PORT"), handler)
 }
 
 func handleCatchAll(w http.ResponseWriter, r *http.Request) {
@@ -43,6 +68,18 @@ func handleGateway(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleAuthorize(w http.ResponseWriter, r *http.Request) {
+	// Extract trace context from Lambda runtime environment.
+	// LWA pass-through doesn't propagate trace headers, so we extract from env var.
+	ctx := r.Context()
+	if traceID := os.Getenv("_X_AMZN_TRACE_ID"); traceID != "" {
+		carrier := propagation.HeaderCarrier{"X-Amzn-Trace-Id": []string{traceID}}
+		ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
+	}
+
+	tracer := otel.Tracer("coreback")
+	ctx, span := tracer.Start(ctx, "authorize")
+	defer span.End()
+
 	log.Printf("[authorize] method=%s path=%s", r.Method, r.URL.Path)
 
 	body, err := io.ReadAll(r.Body)

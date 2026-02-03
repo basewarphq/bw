@@ -11,11 +11,22 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/basewarphq/bwapp/bwcdk/bwcdkrestgateway"
+	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
 )
 
 // testEntry is a valid entry path pointing to an actual Go command in the repo.
 // Tests requiring CDK runtime must run from the module root.
 var testEntry = "backend/cmd/coreback"
+
+// testConfig returns a Config for testing.
+func testConfig() *bwcdkutil.Config {
+	return &bwcdkutil.Config{
+		Qualifier:      "testqual",
+		PrimaryRegion:  "us-east-1",
+		Deployments:    []string{"dev", "Prod"},
+		BaseDomainName: "example.com",
+	}
+}
 
 func init() {
 	// Change to module root so CDK can find the entry path.
@@ -34,11 +45,13 @@ func TestNew_WithoutAuthorizer(t *testing.T) {
 	defer jsii.Close()
 
 	app := awscdk.NewApp(nil)
+	bwcdkutil.StoreConfig(app, testConfig())
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), &awscdk.StackProps{
 		Env: &awscdk.Environment{
 			Region: jsii.String("eu-west-1"),
 		},
 	})
+	bwcdkutil.StoreDeploymentIdent(stack, "dev")
 
 	hostedZone := awsroute53.NewHostedZone(stack, jsii.String("Zone"), &awsroute53.HostedZoneProps{
 		ZoneName: jsii.String("example.com"),
@@ -49,12 +62,11 @@ func TestNew_WithoutAuthorizer(t *testing.T) {
 	})
 
 	gateway := bwcdkrestgateway.New(stack, bwcdkrestgateway.Props{
-		Entry:           jsii.String(testEntry),
-		PublicRoutes:    &[]*string{jsii.String("/g/{proxy+}")},
-		HostedZone:      hostedZone,
-		Certificate:     certificate,
-		Subdomain:       jsii.String("api"),
-		DeploymentIdent: jsii.String("dev"),
+		Entry:        jsii.String(testEntry),
+		PublicRoutes: &[]*string{jsii.String("/g/{proxy+}")},
+		HostedZone:   hostedZone,
+		Certificate:  certificate,
+		Subdomain:    jsii.String("api"),
 	})
 
 	if gateway.Lambda() == nil {
@@ -85,11 +97,13 @@ func TestNew_WithAuthorizer(t *testing.T) {
 	defer jsii.Close()
 
 	app := awscdk.NewApp(nil)
+	bwcdkutil.StoreConfig(app, testConfig())
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), &awscdk.StackProps{
 		Env: &awscdk.Environment{
 			Region: jsii.String("us-east-1"),
 		},
 	})
+	bwcdkutil.StoreDeploymentIdent(stack, "Prod")
 
 	hostedZone := awsroute53.NewHostedZone(stack, jsii.String("Zone"), &awsroute53.HostedZoneProps{
 		ZoneName: jsii.String("basewarp.app"),
@@ -100,13 +114,12 @@ func TestNew_WithAuthorizer(t *testing.T) {
 	})
 
 	gateway := bwcdkrestgateway.New(stack, bwcdkrestgateway.Props{
-		Entry:           jsii.String(testEntry),
-		PublicRoutes:    &[]*string{jsii.String("/g/{proxy+}")},
-		HostedZone:      hostedZone,
-		Certificate:     certificate,
-		Subdomain:       jsii.String("api"),
-		DeploymentIdent: jsii.String("prod"),
-		Authorizer:      &bwcdkrestgateway.AuthorizerProps{},
+		Entry:        jsii.String(testEntry),
+		PublicRoutes: &[]*string{jsii.String("/g/{proxy+}")},
+		HostedZone:   hostedZone,
+		Certificate:  certificate,
+		Subdomain:    jsii.String("api"),
+		Authorizer:   &bwcdkrestgateway.AuthorizerProps{},
 	})
 
 	if gateway.Lambda() == nil {
@@ -143,11 +156,13 @@ func TestNew_MultipleRoutes(t *testing.T) {
 	defer jsii.Close()
 
 	app := awscdk.NewApp(nil)
+	bwcdkutil.StoreConfig(app, testConfig())
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), &awscdk.StackProps{
 		Env: &awscdk.Environment{
 			Region: jsii.String("eu-west-1"),
 		},
 	})
+	bwcdkutil.StoreDeploymentIdent(stack, "dev")
 
 	hostedZone := awsroute53.NewHostedZone(stack, jsii.String("Zone"), &awsroute53.HostedZoneProps{
 		ZoneName: jsii.String("example.com"),
@@ -164,10 +179,9 @@ func TestNew_MultipleRoutes(t *testing.T) {
 			jsii.String("/health"),
 			jsii.String("/api/v1/{proxy+}"),
 		},
-		HostedZone:      hostedZone,
-		Certificate:     certificate,
-		Subdomain:       jsii.String("api"),
-		DeploymentIdent: jsii.String("dev"),
+		HostedZone:  hostedZone,
+		Certificate: certificate,
+		Subdomain:   jsii.String("api"),
 	})
 
 	if gateway.RestApi() == nil {
@@ -179,11 +193,13 @@ func TestNew_WithEnvironment(t *testing.T) {
 	defer jsii.Close()
 
 	app := awscdk.NewApp(nil)
+	bwcdkutil.StoreConfig(app, testConfig())
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), &awscdk.StackProps{
 		Env: &awscdk.Environment{
 			Region: jsii.String("eu-west-1"),
 		},
 	})
+	bwcdkutil.StoreDeploymentIdent(stack, "dev")
 
 	hostedZone := awsroute53.NewHostedZone(stack, jsii.String("Zone"), &awsroute53.HostedZoneProps{
 		ZoneName: jsii.String("example.com"),
@@ -198,13 +214,12 @@ func TestNew_WithEnvironment(t *testing.T) {
 	}
 
 	gateway := bwcdkrestgateway.New(stack, bwcdkrestgateway.Props{
-		Entry:           jsii.String(testEntry),
-		PublicRoutes:    &[]*string{jsii.String("/g/{proxy+}")},
-		Environment:     &env,
-		HostedZone:      hostedZone,
-		Certificate:     certificate,
-		Subdomain:       jsii.String("api"),
-		DeploymentIdent: jsii.String("dev"),
+		Entry:        jsii.String(testEntry),
+		PublicRoutes: &[]*string{jsii.String("/g/{proxy+}")},
+		Environment:  &env,
+		HostedZone:   hostedZone,
+		Certificate:  certificate,
+		Subdomain:    jsii.String("api"),
 	})
 
 	if gateway.Lambda() == nil {
@@ -216,11 +231,13 @@ func TestNew_DifferentSubdomains(t *testing.T) {
 	defer jsii.Close()
 
 	app := awscdk.NewApp(nil)
+	bwcdkutil.StoreConfig(app, testConfig())
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), &awscdk.StackProps{
 		Env: &awscdk.Environment{
 			Region: jsii.String("ap-southeast-1"),
 		},
 	})
+	bwcdkutil.StoreDeploymentIdent(stack, "staging")
 
 	hostedZone := awsroute53.NewHostedZone(stack, jsii.String("Zone"), &awsroute53.HostedZoneProps{
 		ZoneName: jsii.String("myapp.io"),
@@ -231,12 +248,11 @@ func TestNew_DifferentSubdomains(t *testing.T) {
 	})
 
 	gateway := bwcdkrestgateway.New(stack, bwcdkrestgateway.Props{
-		Entry:           jsii.String(testEntry),
-		PublicRoutes:    &[]*string{jsii.String("/webhook")},
-		HostedZone:      hostedZone,
-		Certificate:     certificate,
-		Subdomain:       jsii.String("webhook"),
-		DeploymentIdent: jsii.String("staging"),
+		Entry:        jsii.String(testEntry),
+		PublicRoutes: &[]*string{jsii.String("/webhook")},
+		HostedZone:   hostedZone,
+		Certificate:  certificate,
+		Subdomain:    jsii.String("webhook"),
 	})
 
 	// ap-southeast-1 -> ase1

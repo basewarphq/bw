@@ -9,7 +9,18 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/basewarphq/bwapp/bwcdk/bwcdklwalambda"
+	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
 )
+
+// testConfig returns a Config for testing.
+func testConfig() *bwcdkutil.Config {
+	return &bwcdkutil.Config{
+		Qualifier:      "testqual",
+		PrimaryRegion:  "us-east-1",
+		Deployments:    []string{"dev", "Prod"},
+		BaseDomainName: "example.com",
+	}
+}
 
 // testEntry is a valid entry path pointing to an actual Go command in the repo.
 // Tests requiring CDK runtime must run from the module root.
@@ -114,11 +125,13 @@ func TestNew_WithoutPassThroughPath(t *testing.T) {
 	defer jsii.Close()
 
 	app := awscdk.NewApp(nil)
+	bwcdkutil.StoreConfig(app, testConfig())
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), &awscdk.StackProps{
 		Env: &awscdk.Environment{
 			Region: jsii.String("us-east-1"),
 		},
 	})
+	bwcdkutil.StoreDeploymentIdent(stack, "dev")
 
 	lambda := bwcdklwalambda.New(stack, bwcdklwalambda.Props{
 		Entry: jsii.String(testEntry),
@@ -139,11 +152,13 @@ func TestNew_WithPassThroughPath(t *testing.T) {
 	defer jsii.Close()
 
 	app := awscdk.NewApp(nil)
+	bwcdkutil.StoreConfig(app, testConfig())
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), &awscdk.StackProps{
 		Env: &awscdk.Environment{
 			Region: jsii.String("us-east-1"),
 		},
 	})
+	bwcdkutil.StoreDeploymentIdent(stack, "dev")
 
 	lambda := bwcdklwalambda.New(stack, bwcdklwalambda.Props{
 		Entry:           jsii.String(testEntry),
@@ -165,11 +180,13 @@ func TestNew_WithPassThroughPathKebabCase(t *testing.T) {
 	defer jsii.Close()
 
 	app := awscdk.NewApp(nil)
+	bwcdkutil.StoreConfig(app, testConfig())
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), &awscdk.StackProps{
 		Env: &awscdk.Environment{
 			Region: jsii.String("us-east-1"),
 		},
 	})
+	bwcdkutil.StoreDeploymentIdent(stack, "dev")
 
 	lambda := bwcdklwalambda.New(stack, bwcdklwalambda.Props{
 		Entry:           jsii.String(testEntry),
@@ -191,11 +208,13 @@ func TestNew_InvalidEntry(t *testing.T) {
 	}()
 
 	app := awscdk.NewApp(nil)
+	bwcdkutil.StoreConfig(app, testConfig())
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), &awscdk.StackProps{
 		Env: &awscdk.Environment{
 			Region: jsii.String("us-east-1"),
 		},
 	})
+	bwcdkutil.StoreDeploymentIdent(stack, "dev")
 
 	bwcdklwalambda.New(stack, bwcdklwalambda.Props{
 		Entry: jsii.String("invalid/path"),
@@ -212,11 +231,13 @@ func TestNew_InvalidPassThroughPath(t *testing.T) {
 	}()
 
 	app := awscdk.NewApp(nil)
+	bwcdkutil.StoreConfig(app, testConfig())
 	stack := awscdk.NewStack(app, jsii.String("TestStack"), &awscdk.StackProps{
 		Env: &awscdk.Environment{
 			Region: jsii.String("us-east-1"),
 		},
 	})
+	bwcdkutil.StoreDeploymentIdent(stack, "dev")
 
 	bwcdklwalambda.New(stack, bwcdklwalambda.Props{
 		Entry:           jsii.String(testEntry),

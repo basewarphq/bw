@@ -78,6 +78,11 @@ func newStackInternal(
 		}),
 	})
 
+	// Store deployment identifier in stack context for retrieval via DeploymentIdent().
+	if len(deploymentIdent) > 0 && deploymentIdent[0] != "" {
+		stack.Node().SetContext(jsii.String(deploymentIdentContextKey), deploymentIdent[0])
+	}
+
 	awscdk.Annotations_Of(stack).AcknowledgeWarning(
 		jsii.String("@aws-cdk/aws-lambda-go-alpha:goBuildFlagsSecurityWarning"),
 		jsii.String("Build flags are controlled by bwcdkutil.ReproducibleGoBundling and are safe"),

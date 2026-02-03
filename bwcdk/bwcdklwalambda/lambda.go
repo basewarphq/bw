@@ -52,6 +52,7 @@ type Props struct {
 	// Use this for Lambda authorizers and other non-HTTP triggers like SQS/SNS.
 	// Optional.
 	PassThroughPath *string
+
 }
 
 // parsePassThroughPath validates PassThroughPath and returns a suffix for construct naming.
@@ -139,8 +140,11 @@ func New(scope constructs.Construct, props Props) Lambda {
 		region, LWALayerVersion,
 	)
 
+	functionName := bwcdkutil.ResourceName(scope, scopeName, bwcdkutil.CasingKebab)
+
 	con.function = awscdklambdagoalpha.NewGoFunction(scope, jsii.String("Function"),
 		&awscdklambdagoalpha.GoFunctionProps{
+			FunctionName: jsii.String(functionName),
 			Entry:        props.Entry,
 			Architecture: awslambda.Architecture_ARM_64(),
 			Runtime:      awslambda.Runtime_PROVIDED_AL2023(),
@@ -148,6 +152,7 @@ func New(scope constructs.Construct, props Props) Lambda {
 			Timeout:      awscdk.Duration_Seconds(jsii.Number(30)),
 			Environment:  &env,
 			Bundling:     bwcdkutil.ReproducibleGoBundling(),
+			Tracing:      awslambda.Tracing_ACTIVE,
 			Layers: &[]awslambda.ILayerVersion{
 				awslambda.LayerVersion_FromLayerVersionArn(scope,
 					jsii.String("LWALayer"), jsii.String(lwaLayerArn)),

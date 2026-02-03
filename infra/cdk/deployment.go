@@ -13,12 +13,11 @@ func NewDeployment(stack awscdk.Stack, deploymentIdent string) {
 	certificate := bwcdkcerts.LookupCertificate(stack)
 
 	_ = bwcdkrestgateway.New(stack, bwcdkrestgateway.Props{
-		Entry:           jsii.String("../../../backend/cmd/coreback"),
-		PublicRoutes:    jsii.Strings("/g/{proxy+}"),
-		HostedZone:      hostedZone,
-		Certificate:     certificate,
-		Subdomain:       jsii.String("api"),
-		DeploymentIdent: jsii.String(deploymentIdent),
-		Authorizer:      &bwcdkrestgateway.AuthorizerProps{},
+		Entry:        jsii.String("../../../backend/cmd/coreback"),
+		PublicRoutes: jsii.Strings("/g/{proxy+}"),
+		HostedZone:   hostedZone,
+		Certificate:  certificate,
+		Subdomain:    jsii.String("api"),
+		Authorizer:   &bwcdkrestgateway.AuthorizerProps{},
 	})
 }

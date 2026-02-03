@@ -62,9 +62,6 @@ type Props struct {
 	// Combined with deployment and region to form the full subdomain.
 	// Required.
 	Subdomain *string
-	// DeploymentIdent is the deployment identifier (e.g., "dev", "prod").
-	// Required.
-	DeploymentIdent *string
 	// Authorizer enables a Lambda TOKEN authorizer for all public routes.
 	// When set, creates a separate Lambda instance using the same Entry,
 	// configured to handle requests at /l/authorize.
@@ -117,7 +114,8 @@ func New(scope constructs.Construct, props Props) RestGateway {
 		})
 	}
 
-	apiName := con.lambda.Name() + strcase.ToCamel(*props.DeploymentIdent) + "Gateway"
+	deploymentIdent := bwcdkutil.DeploymentIdent(scope)
+	apiName := bwcdkutil.ResourceName(scope, con.lambda.Name()+"Gateway", bwcdkutil.CasingCamel)
 
 	accessLogID := con.lambda.Name() + strcase.ToCamel(*props.Subdomain) + "AccessLogs"
 	con.accessLogGroup = bwcdkloggroup.New(scope, accessLogID, bwcdkloggroup.Props{
@@ -128,10 +126,10 @@ func New(scope constructs.Construct, props Props) RestGateway {
 	region := *stack.Region()
 	zoneName := *props.HostedZone.ZoneName()
 
-	regionalSubdomain := bwcdkutil.RegionalSubdomain(*props.DeploymentIdent, region, *props.Subdomain)
+	regionalSubdomain := bwcdkutil.RegionalSubdomain(deploymentIdent, region, *props.Subdomain)
 	con.domainName = regionalSubdomain + "." + zoneName
 
-	globalSubdomain := bwcdkutil.GlobalSubdomain(*props.DeploymentIdent, *props.Subdomain)
+	globalSubdomain := bwcdkutil.GlobalSubdomain(deploymentIdent, *props.Subdomain)
 	con.globalDomainName = globalSubdomain + "." + zoneName
 
 	// Use REGIONAL endpoint type for multi-region deployments with latency-based routing.
@@ -151,6 +149,7 @@ func New(scope constructs.Construct, props Props) RestGateway {
 		DisableExecuteApiEndpoint: jsii.Bool(true),
 		DeployOptions: &awsapigateway.StageOptions{
 			StageName:            jsii.String("prod"),
+			TracingEnabled:       jsii.Bool(true),
 			AccessLogDestination: awsapigateway.NewLogGroupLogDestination(con.accessLogGroup),
 			AccessLogFormat: awsapigateway.AccessLogFormat_JsonWithStandardFields(
 				&awsapigateway.JsonWithStandardFieldProps{
