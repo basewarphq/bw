@@ -1,13 +1,4 @@
-// Package tracelog provides context-aware logging with X-Ray trace correlation.
-//
-// AWS recommends including trace_id and span_id in log messages for trace-log
-// correlation. CloudWatch Logs Insights can then filter logs by trace ID, and
-// X-Ray can display correlated logs in the trace timeline.
-//
-// Log format follows AWS conventions:
-//
-//	trace_id=<trace-id> span_id=<span-id> <message>
-package tracelog
+package bwwebdev
 
 import (
 	"context"
@@ -17,16 +8,16 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// Printf logs a message with trace context extracted from ctx.
+// LogPrintf logs a message with trace context extracted from ctx.
 // If the context contains an active span, trace_id and span_id are prepended.
-func Printf(ctx context.Context, format string, args ...any) {
+func LogPrintf(ctx context.Context, format string, args ...any) {
 	msg := fmt.Sprintf(format, args...)
 	log.Print(formatWithTrace(ctx, msg))
 }
 
-// Errorf logs an error with trace context and records it on the active span.
+// LogErrorf logs an error with trace context and records it on the active span.
 // Use this for errors that should appear in both logs and traces.
-func Errorf(ctx context.Context, format string, args ...any) {
+func LogErrorf(ctx context.Context, format string, args ...any) {
 	msg := fmt.Sprintf(format, args...)
 	log.Print(formatWithTrace(ctx, msg))
 

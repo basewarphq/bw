@@ -39,16 +39,29 @@ type RestGateway interface {
 	GlobalDomainName() string
 }
 
+// RouteConfig configures a single gateway route.
+type RouteConfig struct {
+	// Path is the route path to expose via API Gateway.
+	// Use {proxy+} for greedy path matching (e.g., "/api/{proxy+}").
+	// Required.
+	Path *string
+	// RequireAuth specifies whether this route requires authorization.
+	// Only applies when Authorizer is configured on the gateway.
+	// Defaults to false if nil.
+	// Optional.
+	RequireAuth *bool
+}
+
 // Props configures the RestGateway construct.
 type Props struct {
 	// Entry is the path to the Go command directory.
 	// Passed to the underlying LWA Lambda construct.
 	// Required.
 	Entry *string
-	// PublicRoutes are the paths to expose via API Gateway.
-	// Use {proxy+} for greedy path matching (e.g., "/api/{proxy+}").
+	// GatewayRoutes are the routes to expose via API Gateway.
+	// Each route can individually require authorization.
 	// Required.
-	PublicRoutes *[]*string
+	GatewayRoutes *[]*RouteConfig
 	// Environment variables to pass to the Lambda function.
 	Environment *map[string]*string
 
@@ -62,9 +75,10 @@ type Props struct {
 	// Combined with deployment and region to form the full subdomain.
 	// Required.
 	Subdomain *string
-	// Authorizer enables a Lambda TOKEN authorizer for all public routes.
+	// Authorizer enables a Lambda TOKEN authorizer for the gateway.
 	// When set, creates a separate Lambda instance using the same Entry,
 	// configured to handle requests at /l/authorize.
+	// Routes opt-in to authorization via RouteConfig.RequireAuth.
 	//
 	// Only TOKEN authorizers are supported with AWS Lambda Web Adapter (LWA).
 	// REQUEST authorizers share HTTP-like fields (httpMethod, path, headers,
@@ -89,13 +103,20 @@ type restGateway struct {
 
 // New creates a RestGateway construct with a Lambda-backed REST API.
 //
-// Only paths specified in PublicRoutes are accessible externally.
+// Only paths specified in GatewayRoutes are accessible externally.
+// Each route can individually require authorization via RequireAuth.
 // The Lambda can expose additional internal paths (e.g., /lambda/*)
 // that remain accessible only via direct Lambda invocation.
 //
 // A custom domain is configured with format "{deployment}-{region}-{subdomain}.{zone}"
 // (e.g., "dev-euw1-api.basewarp.app"). The execute-api endpoint is disabled.
 func New(scope constructs.Construct, props Props) RestGateway {
+	for _, route := range *props.GatewayRoutes {
+		if route.RequireAuth != nil && *route.RequireAuth && props.Authorizer == nil {
+			panic("route " + *route.Path + " requires auth but no Authorizer is configured")
+		}
+	}
+
 	scope = constructs.NewConstruct(scope, jsii.String(strcase.ToCamel(*props.Subdomain)+"RGw"))
 	con := &restGateway{}
 
@@ -180,8 +201,12 @@ func New(scope constructs.Construct, props Props) RestGateway {
 			})
 	}
 
-	for _, route := range *props.PublicRoutes {
-		addRoute(con.restApi.Root(), *route, integration, authorizer)
+	for _, route := range *props.GatewayRoutes {
+		routeAuthorizer := authorizer
+		if route.RequireAuth == nil || !*route.RequireAuth {
+			routeAuthorizer = nil
+		}
+		addRoute(con.restApi.Root(), *route.Path, integration, routeAuthorizer)
 	}
 
 	awsroute53.NewARecord(scope, jsii.String("DnsRecord"), &awsroute53.ARecordProps{
@@ -210,12 +235,12 @@ func New(scope constructs.Construct, props Props) RestGateway {
 	outputPrefix := con.lambda.Name() + strcase.ToCamel(*props.Subdomain)
 	awscdk.NewCfnOutput(scope, jsii.String("GatewayURLRegional"), &awscdk.CfnOutputProps{
 		Key:         jsii.String(outputPrefix + "GatewayURLRegional"),
-		Description: jsii.String("Regional API Gateway endpoint URL"),
+		Description: jsii.Sprintf("Regional %s gateway endpoint URL", *props.Subdomain),
 		Value:       jsii.String("https://" + con.domainName),
 	})
 	awscdk.NewCfnOutput(scope, jsii.String("GatewayURLGlobal"), &awscdk.CfnOutputProps{
 		Key:         jsii.String(outputPrefix + "GatewayURLGlobal"),
-		Description: jsii.String("Global API Gateway endpoint URL (latency-based routing)"),
+		Description: jsii.Sprintf("Global %s gateway endpoint URL (latency-based routing)", *props.Subdomain),
 		Value:       jsii.String("https://" + con.globalDomainName),
 	})
 
@@ -224,13 +249,16 @@ func New(scope constructs.Construct, props Props) RestGateway {
 
 // addRoute adds a route to the REST API.
 // Handles nested paths like "/api/{proxy+}" by creating intermediate resources.
+// Root path "/" adds a method directly to the root resource.
 func addRoute(root awsapigateway.IResource, path string, integration awsapigateway.LambdaIntegration, authorizer awsapigateway.IAuthorizer) {
 	path = strings.TrimPrefix(path, "/")
-	parts := strings.Split(path, "/")
 
 	resource := root
-	for _, part := range parts {
-		resource = resource.AddResource(jsii.String(part), nil)
+	if path != "" {
+		parts := strings.Split(path, "/")
+		for _, part := range parts {
+			resource = resource.AddResource(jsii.String(part), nil)
+		}
 	}
 
 	var methodOpts *awsapigateway.MethodOptions

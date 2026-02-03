@@ -62,11 +62,13 @@ func TestNew_WithoutAuthorizer(t *testing.T) {
 	})
 
 	gateway := bwcdkrestgateway.New(stack, bwcdkrestgateway.Props{
-		Entry:        jsii.String(testEntry),
-		PublicRoutes: &[]*string{jsii.String("/g/{proxy+}")},
-		HostedZone:   hostedZone,
-		Certificate:  certificate,
-		Subdomain:    jsii.String("api"),
+		Entry: jsii.String(testEntry),
+		GatewayRoutes: &[]*bwcdkrestgateway.RouteConfig{
+			{Path: jsii.String("/g/{proxy+}")},
+		},
+		HostedZone:  hostedZone,
+		Certificate: certificate,
+		Subdomain:   jsii.String("api"),
 	})
 
 	if gateway.Lambda() == nil {
@@ -114,12 +116,14 @@ func TestNew_WithAuthorizer(t *testing.T) {
 	})
 
 	gateway := bwcdkrestgateway.New(stack, bwcdkrestgateway.Props{
-		Entry:        jsii.String(testEntry),
-		PublicRoutes: &[]*string{jsii.String("/g/{proxy+}")},
-		HostedZone:   hostedZone,
-		Certificate:  certificate,
-		Subdomain:    jsii.String("api"),
-		Authorizer:   &bwcdkrestgateway.AuthorizerProps{},
+		Entry: jsii.String(testEntry),
+		GatewayRoutes: &[]*bwcdkrestgateway.RouteConfig{
+			{Path: jsii.String("/g/{proxy+}"), RequireAuth: jsii.Bool(true)},
+		},
+		HostedZone:  hostedZone,
+		Certificate: certificate,
+		Subdomain:   jsii.String("api"),
+		Authorizer:  &bwcdkrestgateway.AuthorizerProps{},
 	})
 
 	if gateway.Lambda() == nil {
@@ -174,10 +178,10 @@ func TestNew_MultipleRoutes(t *testing.T) {
 
 	gateway := bwcdkrestgateway.New(stack, bwcdkrestgateway.Props{
 		Entry: jsii.String(testEntry),
-		PublicRoutes: &[]*string{
-			jsii.String("/g/{proxy+}"),
-			jsii.String("/health"),
-			jsii.String("/api/v1/{proxy+}"),
+		GatewayRoutes: &[]*bwcdkrestgateway.RouteConfig{
+			{Path: jsii.String("/g/{proxy+}")},
+			{Path: jsii.String("/health")},
+			{Path: jsii.String("/api/v1/{proxy+}")},
 		},
 		HostedZone:  hostedZone,
 		Certificate: certificate,
@@ -214,12 +218,14 @@ func TestNew_WithEnvironment(t *testing.T) {
 	}
 
 	gateway := bwcdkrestgateway.New(stack, bwcdkrestgateway.Props{
-		Entry:        jsii.String(testEntry),
-		PublicRoutes: &[]*string{jsii.String("/g/{proxy+}")},
-		Environment:  &env,
-		HostedZone:   hostedZone,
-		Certificate:  certificate,
-		Subdomain:    jsii.String("api"),
+		Entry: jsii.String(testEntry),
+		GatewayRoutes: &[]*bwcdkrestgateway.RouteConfig{
+			{Path: jsii.String("/g/{proxy+}")},
+		},
+		Environment: &env,
+		HostedZone:  hostedZone,
+		Certificate: certificate,
+		Subdomain:   jsii.String("api"),
 	})
 
 	if gateway.Lambda() == nil {
@@ -248,11 +254,13 @@ func TestNew_DifferentSubdomains(t *testing.T) {
 	})
 
 	gateway := bwcdkrestgateway.New(stack, bwcdkrestgateway.Props{
-		Entry:        jsii.String(testEntry),
-		PublicRoutes: &[]*string{jsii.String("/webhook")},
-		HostedZone:   hostedZone,
-		Certificate:  certificate,
-		Subdomain:    jsii.String("webhook"),
+		Entry: jsii.String(testEntry),
+		GatewayRoutes: &[]*bwcdkrestgateway.RouteConfig{
+			{Path: jsii.String("/webhook")},
+		},
+		HostedZone:  hostedZone,
+		Certificate: certificate,
+		Subdomain:   jsii.String("webhook"),
 	})
 
 	// ap-southeast-1 -> ase1
@@ -264,5 +272,131 @@ func TestNew_DifferentSubdomains(t *testing.T) {
 	wantGlobalDomainName := "staging-webhook.myapp.io"
 	if gateway.GlobalDomainName() != wantGlobalDomainName {
 		t.Errorf("GlobalDomainName() = %q, want %q", gateway.GlobalDomainName(), wantGlobalDomainName)
+	}
+}
+
+func TestRouteConfig_RequireAuthDefaults(t *testing.T) {
+	defer jsii.Close()
+
+	app := awscdk.NewApp(nil)
+	bwcdkutil.StoreConfig(app, testConfig())
+	stack := awscdk.NewStack(app, jsii.String("TestStack"), &awscdk.StackProps{
+		Env: &awscdk.Environment{
+			Region: jsii.String("eu-west-1"),
+		},
+	})
+	bwcdkutil.StoreDeploymentIdent(stack, "dev")
+
+	hostedZone := awsroute53.NewHostedZone(stack, jsii.String("Zone"), &awsroute53.HostedZoneProps{
+		ZoneName: jsii.String("example.com"),
+	})
+
+	certificate := awscertificatemanager.NewCertificate(stack, jsii.String("Cert"), &awscertificatemanager.CertificateProps{
+		DomainName: jsii.String("*.example.com"),
+	})
+
+	// When Authorizer is set but RequireAuth is nil, routes should NOT require auth (default false).
+	gateway := bwcdkrestgateway.New(stack, bwcdkrestgateway.Props{
+		Entry: jsii.String(testEntry),
+		GatewayRoutes: &[]*bwcdkrestgateway.RouteConfig{
+			{Path: jsii.String("/public")},                         // nil RequireAuth -> no auth
+			{Path: jsii.String("/also-public"), RequireAuth: nil},  // explicit nil -> no auth
+			{Path: jsii.String("/protected"), RequireAuth: jsii.Bool(true)},
+			{Path: jsii.String("/open"), RequireAuth: jsii.Bool(false)},
+		},
+		HostedZone:  hostedZone,
+		Certificate: certificate,
+		Subdomain:   jsii.String("api"),
+		Authorizer:  &bwcdkrestgateway.AuthorizerProps{},
+	})
+
+	// Gateway should be created successfully with mixed auth routes.
+	if gateway.RestApi() == nil {
+		t.Error("RestApi() should not be nil")
+	}
+	if gateway.AuthorizerLambda() == nil {
+		t.Error("AuthorizerLambda() should not be nil when Authorizer is configured")
+	}
+}
+
+func TestRouteConfig_RequireAuthWithoutAuthorizer_Panics(t *testing.T) {
+	defer jsii.Close()
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Error("expected panic when RequireAuth is true but no Authorizer configured")
+		}
+		want := "route /api requires auth but no Authorizer is configured"
+		if r != want {
+			t.Errorf("panic message = %q, want %q", r, want)
+		}
+	}()
+
+	app := awscdk.NewApp(nil)
+	bwcdkutil.StoreConfig(app, testConfig())
+	stack := awscdk.NewStack(app, jsii.String("TestStack"), &awscdk.StackProps{
+		Env: &awscdk.Environment{
+			Region: jsii.String("eu-west-1"),
+		},
+	})
+	bwcdkutil.StoreDeploymentIdent(stack, "dev")
+
+	hostedZone := awsroute53.NewHostedZone(stack, jsii.String("Zone"), &awsroute53.HostedZoneProps{
+		ZoneName: jsii.String("example.com"),
+	})
+
+	certificate := awscertificatemanager.NewCertificate(stack, jsii.String("Cert"), &awscertificatemanager.CertificateProps{
+		DomainName: jsii.String("*.example.com"),
+	})
+
+	// Should panic: RequireAuth: true without Authorizer configured.
+	bwcdkrestgateway.New(stack, bwcdkrestgateway.Props{
+		Entry: jsii.String(testEntry),
+		GatewayRoutes: &[]*bwcdkrestgateway.RouteConfig{
+			{Path: jsii.String("/api"), RequireAuth: jsii.Bool(true)},
+		},
+		HostedZone:  hostedZone,
+		Certificate: certificate,
+		Subdomain:   jsii.String("api"),
+		// No Authorizer set
+	})
+}
+
+func TestRouteConfig_RootPath(t *testing.T) {
+	defer jsii.Close()
+
+	app := awscdk.NewApp(nil)
+	bwcdkutil.StoreConfig(app, testConfig())
+	stack := awscdk.NewStack(app, jsii.String("TestStack"), &awscdk.StackProps{
+		Env: &awscdk.Environment{
+			Region: jsii.String("eu-west-1"),
+		},
+	})
+	bwcdkutil.StoreDeploymentIdent(stack, "dev")
+
+	hostedZone := awsroute53.NewHostedZone(stack, jsii.String("Zone"), &awsroute53.HostedZoneProps{
+		ZoneName: jsii.String("example.com"),
+	})
+
+	certificate := awscertificatemanager.NewCertificate(stack, jsii.String("Cert"), &awscertificatemanager.CertificateProps{
+		DomainName: jsii.String("*.example.com"),
+	})
+
+	// Root path "/" should work for redirects/landing pages.
+	gateway := bwcdkrestgateway.New(stack, bwcdkrestgateway.Props{
+		Entry: jsii.String(testEntry),
+		GatewayRoutes: &[]*bwcdkrestgateway.RouteConfig{
+			{Path: jsii.String("/")},
+			{Path: jsii.String("/c/{proxy+}"), RequireAuth: jsii.Bool(true)},
+		},
+		HostedZone:  hostedZone,
+		Certificate: certificate,
+		Subdomain:   jsii.String("console"),
+		Authorizer:  &bwcdkrestgateway.AuthorizerProps{},
+	})
+
+	if gateway.RestApi() == nil {
+		t.Error("RestApi() should not be nil")
 	}
 }

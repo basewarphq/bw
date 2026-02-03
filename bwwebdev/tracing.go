@@ -1,10 +1,6 @@
-// Package tracing provides OpenTelemetry initialization for Lambda functions
-// using AWS Lambda Web Adapter (LWA).
-//
-// The exporter is configurable via OTEL_EXPORTER environment variable:
-//   - "xrayudp": Export directly to Lambda's built-in X-Ray daemon (no collector layer needed)
-//   - "stdout": Print traces to stdout (for local development)
-package tracing
+// Package bwwebdev provides shared utilities for web development in Lambda
+// environments using AWS Lambda Web Adapter (LWA).
+package bwwebdev
 
 import (
 	"context"
@@ -16,20 +12,18 @@ import (
 	"go.opentelemetry.io/contrib/propagators/aws/xray"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
-
 	"go.opentelemetry.io/otel/sdk/trace"
-
 )
 
 var tp *trace.TracerProvider
 
-// Init initializes OpenTelemetry with a configurable exporter.
-// Call Shutdown before the function exits to flush pending traces.
+// InitTracing initializes OpenTelemetry with a configurable exporter.
+// Call ShutdownTracing before the function exits to flush pending traces.
 //
 // Set OTEL_EXPORTER to choose the exporter:
 //   - "xrayudp": Export to Lambda's X-Ray daemon via UDP (default, no collector overhead)
 //   - "stdout": Print traces to stdout (for local development)
-func Init(ctx context.Context) error {
+func InitTracing(ctx context.Context) error {
 	if os.Getenv("OTEL_SDK_DISABLED") == "true" {
 		return nil
 	}
@@ -75,9 +69,9 @@ func newExporter(ctx context.Context) (trace.SpanExporter, error) {
 	}
 }
 
-// Shutdown flushes pending traces and shuts down the tracer provider.
+// ShutdownTracing flushes pending traces and shuts down the tracer provider.
 // Must be called before the Lambda function exits.
-func Shutdown(ctx context.Context) error {
+func ShutdownTracing(ctx context.Context) error {
 	if tp == nil {
 		return nil
 	}

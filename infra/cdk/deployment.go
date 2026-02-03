@@ -17,16 +17,30 @@ func NewDeployment(stack awscdk.Stack, deploymentIdent string) {
 	})
 
 	gateway := bwcdkrestgateway.New(stack, bwcdkrestgateway.Props{
-		Entry:        jsii.String("../../../backend/cmd/coreback"),
-		PublicRoutes: jsii.Strings("/g/{proxy+}"),
-		HostedZone:   hostedZone,
-		Certificate:  certificate,
-		Subdomain:    jsii.String("api"),
-		Authorizer:   &bwcdkrestgateway.AuthorizerProps{},
+		Entry: jsii.String("../../../backend/cmd/coreback"),
+		GatewayRoutes: &[]*bwcdkrestgateway.RouteConfig{
+			{Path: jsii.String("/g/{proxy+}"), RequireAuth: jsii.Bool(true)},
+		},
+		HostedZone:  hostedZone,
+		Certificate: certificate,
+		Subdomain:   jsii.String("api"),
+		Authorizer:  &bwcdkrestgateway.AuthorizerProps{},
 		Environment: &map[string]*string{
 			"MAIN_TABLE_NAME": dynamo.Table().TableName(),
 		},
 	})
 	dynamo.GrantReadWriteData(gateway.Lambda().Function())
 	dynamo.GrantReadData(gateway.AuthorizerLambda().Function())
+
+	bwcdkrestgateway.New(stack, bwcdkrestgateway.Props{
+		Entry: jsii.String("../../../console/cmd/coreconsole"),
+		GatewayRoutes: &[]*bwcdkrestgateway.RouteConfig{
+			{Path: jsii.String("/")},
+			{Path: jsii.String("/c/{proxy+}"), RequireAuth: jsii.Bool(true)},
+		},
+		HostedZone:  hostedZone,
+		Certificate: certificate,
+		Subdomain:   jsii.String("console"),
+		Authorizer:  &bwcdkrestgateway.AuthorizerProps{},
+	})
 }
