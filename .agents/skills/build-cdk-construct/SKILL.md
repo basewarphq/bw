@@ -1,6 +1,6 @@
 ---
-name: cdk-constructs
-description: Creates reusable AWS CDK constructs with cross-region SSM parameter patterns. Use when building CDK constructs, shared infrastructure, or multi-region deployments.
+name: build-cdk-construct
+description: Build reusable AWS CDK constructs with cross-region SSM parameter patterns. Use when creating CDK constructs, per-deployment resources, shared infrastructure, or multi-region deployments.
 ---
 
 # CDK Constructs
@@ -97,6 +97,17 @@ func LookupFoo(scope constructs.Construct) SomeIResource {
     return SomeResource_FromArn(scope, jsii.String("LookupFoo"), arn)
 }
 ```
+
+## Package Naming
+
+Name construct packages after the AWS service they encapsulate. Add a qualifying prefix when the construct implements a specific pattern or integration.
+
+**Examples:**
+- Generic Lambda construct → `{prefix}lambda`
+- Lambda using AWS LWA specifically → `{prefix}lwalambda`
+- Generic S3 construct → `{prefix}s3`
+
+Use the specific name only when implementation details meaningfully distinguish it from a generic wrapper.
 
 ## Cross-Stack References via SSM
 

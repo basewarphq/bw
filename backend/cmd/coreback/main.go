@@ -10,11 +10,17 @@ import (
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/basewarphq/bwapp/backend/internal/tracelog"
 	"github.com/basewarphq/bwapp/backend/internal/tracing"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 )
+
+var dynamoClient *dynamodb.Client
 
 func main() {
 	ctx := context.Background()
@@ -27,6 +33,13 @@ func main() {
 			log.Printf("failed to shutdown tracing: %v", err)
 		}
 	}()
+
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		log.Fatalf("failed to load AWS config: %v", err)
+	}
+	otelaws.AppendMiddlewares(&cfg.APIOptions)
+	dynamoClient = dynamodb.NewFromConfig(cfg)
 
 	mux := http.NewServeMux()
 
@@ -61,9 +74,25 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGateway(w http.ResponseWriter, r *http.Request) {
-	log.Printf("[gateway] method=%s path=%s", r.Method, r.URL.Path)
-	log.Printf("[gateway] headers=%v", r.Header)
+	ctx := r.Context()
+	tracelog.Printf(ctx, "[gateway] method=%s path=%s", r.Method, r.URL.Path)
+	tracelog.Printf(ctx, "[gateway] headers=%v", r.Header)
 	path := strings.TrimPrefix(r.URL.Path, "/g")
+
+	tableName := os.Getenv("MAIN_TABLE_NAME")
+	if tableName != "" {
+		var limit int32 = 1
+		out, err := dynamoClient.Scan(ctx, &dynamodb.ScanInput{
+			TableName: &tableName,
+			Limit:     &limit,
+		})
+		if err != nil {
+			tracelog.Errorf(ctx, "[gateway] dynamodb error: %v", err)
+		} else {
+			tracelog.Printf(ctx, "[gateway] table %s has %d items", tableName, out.Count)
+		}
+	}
+
 	w.Write([]byte("hello, world: " + path))
 }
 
@@ -80,25 +109,25 @@ func handleAuthorize(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracer.Start(ctx, "authorize")
 	defer span.End()
 
-	log.Printf("[authorize] method=%s path=%s", r.Method, r.URL.Path)
+	tracelog.Printf(ctx, "[authorize] method=%s path=%s", r.Method, r.URL.Path)
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		log.Printf("[authorize] error reading body: %v", err)
+		tracelog.Errorf(ctx, "[authorize] error reading body: %v", err)
 		http.Error(w, "error reading body", http.StatusBadRequest)
 		return
 	}
-	log.Printf("[authorize] body=%s", string(body))
+	tracelog.Printf(ctx, "[authorize] body=%s", string(body))
 
 	// LWA pass-through POSTs the raw TOKEN authorizer event as the request body.
 	// TOKEN events only contain: type, authorizationToken, methodArn
 	var req events.APIGatewayCustomAuthorizerRequest
 	if err := json.Unmarshal(body, &req); err != nil {
-		log.Printf("[authorize] error decoding JSON: %v", err)
+		tracelog.Errorf(ctx, "[authorize] error decoding JSON: %v", err)
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	log.Printf("[authorize] parsed request: type=%s methodArn=%s token=%s", req.Type, req.MethodArn, req.AuthorizationToken)
+	tracelog.Printf(ctx, "[authorize] parsed request: type=%s methodArn=%s token=%s", req.Type, req.MethodArn, req.AuthorizationToken)
 
 	// TODO: Validate the authorization token
 	_ = req.AuthorizationToken
@@ -119,6 +148,6 @@ func handleAuthorize(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	respBytes, _ := json.Marshal(resp)
-	log.Printf("[authorize] response=%s", string(respBytes))
+	tracelog.Printf(ctx, "[authorize] response=%s", string(respBytes))
 	w.Write(respBytes)
 }
