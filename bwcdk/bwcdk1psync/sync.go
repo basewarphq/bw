@@ -83,7 +83,7 @@ func SecretNameOutputKey(identifier string) string {
 }
 
 // secretName generates the standardized secret name using the qualifier from scope.
-// Format: {qualifier}/{deployment}/{identifier} (all lowercase)
+// Format: {qualifier}/{deployment}/{identifier} (all lowercase).
 func secretName(scope constructs.Construct, deployment, identifier string) string {
 	qualifier := bwcdkutil.Qualifier(scope)
 	return strings.ToLower(qualifier) + "/" + strings.ToLower(deployment) + "/" + strings.ToLower(identifier)
@@ -128,7 +128,7 @@ func NewSyncRole(scope constructs.Construct, props SyncRoleProps) SyncRole {
 		ident = *props.Identifier
 	}
 
-	sr := &syncRole{
+	syncRoleResult := &syncRole{
 		secretRef: &secretRef{
 			scope:      scope,
 			secretName: secretName(scope, deployment, ident),
@@ -137,7 +137,7 @@ func NewSyncRole(scope constructs.Construct, props SyncRoleProps) SyncRole {
 
 	region := *awscdk.Stack_Of(scope).Region()
 	if !bwcdkutil.IsPrimaryRegion(scope, region) {
-		return sr
+		return syncRoleResult
 	}
 
 	validateSAMLSubject(*props.SAMLSubject)
@@ -151,8 +151,8 @@ func NewSyncRole(scope constructs.Construct, props SyncRoleProps) SyncRole {
 	// 1Password requires "programmatic access only" with saml:sub condition.
 	principal := awsiam.NewFederatedPrincipal(
 		samlProvider.SamlProviderArn(),
-		&map[string]interface{}{
-			"StringEquals": map[string]interface{}{
+		&map[string]any{
+			"StringEquals": map[string]any{
 				"SAML:aud": "https://signin.aws.amazon.com/saml",
 				"SAML:sub": props.SAMLSubject,
 			},
@@ -181,7 +181,7 @@ func NewSyncRole(scope constructs.Construct, props SyncRoleProps) SyncRole {
 	// Build role name: 1PasswordSecretsSync{Deployment}{Identifier}
 	roleName := "1PasswordSecretsSync" + deployment
 	if props.Identifier != nil {
-		roleName = roleName + *props.Identifier
+		roleName += *props.Identifier
 	}
 
 	role := awsiam.NewRole(scope, jsii.String("Role"), &awsiam.RoleProps{
@@ -213,7 +213,7 @@ func NewSyncRole(scope constructs.Construct, props SyncRoleProps) SyncRole {
 		Description: jsii.String("Secret name - paste into 1Password 'Target secret name' field"),
 	})
 
-	return sr
+	return syncRoleResult
 }
 
 type syncRole struct {
@@ -282,7 +282,8 @@ func validateSAMLMetadata(doc string) {
 
 	if strings.HasPrefix(trimmed, "<!--") {
 		panic("bwcdk1psync: SAMLMetadataDocument appears to be a placeholder comment. " +
-			"Download the SAML metadata from 1Password: Developer > View Environments > [env] > Destinations > Configure AWS > Download SAML metadata")
+			"Download the SAML metadata: Developer > View Environments > [env] > " +
+			"Destinations > Configure AWS > Download SAML metadata")
 	}
 
 	if !strings.HasPrefix(trimmed, "<?xml") && !strings.HasPrefix(trimmed, "<") {
@@ -300,12 +301,14 @@ func validateSAMLSubject(subject string) {
 
 	if trimmed == "" {
 		panic("bwcdk1psync: SAMLSubject is empty. " +
-			"Copy the SAML subject from 1Password: Developer > View Environments > [env] > Destinations > Configure AWS > Copy SAML subject")
+			"Copy the SAML subject: Developer > View Environments > [env] > " +
+			"Destinations > Configure AWS > Copy SAML subject")
 	}
 
 	if strings.HasPrefix(strings.ToLower(trimmed), "todo") {
 		panic("bwcdk1psync: SAMLSubject is still a placeholder ('" + subject + "'). " +
-			"Copy the SAML subject from 1Password: Developer > View Environments > [env] > Destinations > Configure AWS > Copy SAML subject")
+			"Copy the SAML subject: Developer > View Environments > [env] > " +
+			"Destinations > Configure AWS > Copy SAML subject")
 	}
 
 	// 1Password SAML subjects are uppercase alphanumeric, typically 26 characters

@@ -2,6 +2,7 @@ package bwcdkutil
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
@@ -140,13 +141,7 @@ func NewConfig(scope constructs.Construct, acfg AppConfig) (*Config, error) {
 	}
 
 	// Validate that at least one deployment is a prod deployment
-	hasProd := false
-	for _, deployment := range cfg.Deployments {
-		if IsProdDeployment(deployment) {
-			hasProd = true
-			break
-		}
-	}
+	hasProd := slices.ContainsFunc(cfg.Deployments, IsProdDeployment)
 	if !hasProd {
 		readErrs = append(readErrs, "at least one deployment must be named \"Prod\"")
 	}

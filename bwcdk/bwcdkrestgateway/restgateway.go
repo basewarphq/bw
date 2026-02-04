@@ -6,6 +6,8 @@
 package bwcdkrestgateway
 
 import (
+	"iter"
+	"maps"
 	"strings"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
@@ -129,9 +131,7 @@ func New(scope constructs.Construct, props Props) RestGateway {
 	// Pass the access log group name to Lambda for X-Ray log correlation.
 	lambdaEnv := make(map[string]*string)
 	if props.Environment != nil {
-		for k, v := range *props.Environment {
-			lambdaEnv[k] = v
-		}
+		maps.Copy(lambdaEnv, *props.Environment)
 	}
 	lambdaEnv["BW_GATEWAY_ACCESS_LOG_GROUP"] = con.accessLogGroup.LogGroupName()
 
@@ -184,7 +184,14 @@ func New(scope constructs.Construct, props Props) RestGateway {
 			// Custom format to include xrayTraceId for log-to-trace correlation.
 			// JsonWithStandardFields doesn't support xrayTraceId.
 			AccessLogFormat: awsapigateway.AccessLogFormat_Custom(jsii.String(
-				`{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","caller":"$context.identity.caller","user":"$context.identity.user","requestTime":"$context.requestTime","httpMethod":"$context.httpMethod","resourcePath":"$context.resourcePath","status":"$context.status","protocol":"$context.protocol","responseLength":"$context.responseLength","xrayTraceId":"$context.xrayTraceId","integrationLatency":"$context.integration.latency","integrationStatus":"$context.integration.status"}`,
+				`{"requestId":"$context.requestId","ip":"$context.identity.sourceIp",` +
+					`"caller":"$context.identity.caller","user":"$context.identity.user",` +
+					`"requestTime":"$context.requestTime","httpMethod":"$context.httpMethod",` +
+					`"resourcePath":"$context.resourcePath","status":"$context.status",` +
+					`"protocol":"$context.protocol","responseLength":"$context.responseLength",` +
+					`"xrayTraceId":"$context.xrayTraceId",` +
+					`"integrationLatency":"$context.integration.latency",` +
+					`"integrationStatus":"$context.integration.status"}`,
 			)),
 		},
 	})
@@ -252,13 +259,17 @@ func New(scope constructs.Construct, props Props) RestGateway {
 // addRoute adds a route to the REST API.
 // Handles nested paths like "/api/{proxy+}" by creating intermediate resources.
 // Root path "/" adds a method directly to the root resource.
-func addRoute(root awsapigateway.IResource, path string, integration awsapigateway.LambdaIntegration, authorizer awsapigateway.IAuthorizer) {
+func addRoute(
+	root awsapigateway.IResource,
+	path string,
+	integration awsapigateway.LambdaIntegration,
+	authorizer awsapigateway.IAuthorizer,
+) {
 	path = strings.TrimPrefix(path, "/")
 
 	resource := root
 	if path != "" {
-		parts := strings.Split(path, "/")
-		for _, part := range parts {
+		for part := range splitPath(path) {
 			resource = resource.AddResource(jsii.String(part), nil)
 		}
 	}
@@ -294,4 +305,14 @@ func (r *restGateway) DomainName() string {
 
 func (r *restGateway) GlobalDomainName() string {
 	return r.globalDomainName
+}
+
+func splitPath(path string) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		for part := range strings.SplitSeq(path, "/") {
+			if !yield(part) {
+				return
+			}
+		}
+	}
 }

@@ -113,15 +113,12 @@ func TestNew_MultipleLogGroups(t *testing.T) {
 	foundFirst := false
 	foundSecond := false
 	for _, val := range outputs {
-		if m, ok := val.(map[string]any); ok {
-			if desc, ok := m["Description"].(string); ok {
-				if desc == "CloudWatch Log Group for first purpose" {
-					foundFirst = true
-				}
-				if desc == "CloudWatch Log Group for second purpose" {
-					foundSecond = true
-				}
-			}
+		desc := extractDescription(val)
+		if desc == "CloudWatch Log Group for first purpose" {
+			foundFirst = true
+		}
+		if desc == "CloudWatch Log Group for second purpose" {
+			foundSecond = true
 		}
 	}
 	if !foundFirst {
@@ -130,4 +127,16 @@ func TestNew_MultipleLogGroups(t *testing.T) {
 	if !foundSecond {
 		t.Error("template should have output for second purpose")
 	}
+}
+
+func extractDescription(val any) string {
+	m, ok := val.(map[string]any)
+	if !ok {
+		return ""
+	}
+	desc, ok := m["Description"].(string)
+	if !ok {
+		return ""
+	}
+	return desc
 }

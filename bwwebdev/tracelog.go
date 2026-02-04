@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/cockroachdb/errors"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -24,7 +25,7 @@ func LogErrorf(ctx context.Context, format string, args ...any) {
 	// Also record on span so error appears in X-Ray
 	span := trace.SpanFromContext(ctx)
 	if span.IsRecording() {
-		span.RecordError(fmt.Errorf(format, args...))
+		span.RecordError(errors.Newf(format, args...))
 	}
 }
 

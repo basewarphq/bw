@@ -39,6 +39,8 @@ func handleConsole(ctx *blwa.Context, w bhttp.ResponseWriter, r *http.Request) e
 	ctx.Log().Info("console request")
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, err := w.Write([]byte("<!DOCTYPE html><html><head><title>Console</title></head><body><h1>Console</h1><p>Path: " + path + "</p></body></html>"))
+	_, err := w.Write([]byte(
+		"<!DOCTYPE html><html><head><title>Console</title></head><body>" +
+			"<h1>Console</h1><p>Path: " + path + "</p></body></html>"))
 	return err
 }

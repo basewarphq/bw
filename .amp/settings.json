@@ -1,0 +1,9 @@
+{
+  "amp.permissions": [
+    {
+      "tool": "Bash",
+      "matches": { "cmd": "*mise r *" },
+      "action": "allow"
+    }
+  ]
+}

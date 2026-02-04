@@ -4,10 +4,10 @@ package bwwebdev
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/aws-observability/aws-otel-go/exporters/xrayudp"
+	"github.com/cockroachdb/errors"
 	"go.opentelemetry.io/contrib/detectors/aws/lambda"
 	"go.opentelemetry.io/contrib/propagators/aws/xray"
 	"go.opentelemetry.io/otel"
@@ -15,7 +15,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
-var tp *trace.TracerProvider
+var tracerProvider *trace.TracerProvider
 
 // InitTracing initializes OpenTelemetry with a configurable exporter.
 // Call ShutdownTracing before the function exits to flush pending traces.
@@ -44,13 +44,13 @@ func InitTracing(ctx context.Context) error {
 	// With LWA, the HTTP server stays running but Lambda may freeze the container
 	// between invocations. Sync export ensures spans are sent immediately,
 	// avoiding data loss from unflushed batches.
-	tp = trace.NewTracerProvider(
+	tracerProvider = trace.NewTracerProvider(
 		trace.WithSpanProcessor(trace.NewSimpleSpanProcessor(exporter)),
 		trace.WithResource(res),
 		trace.WithIDGenerator(xray.NewIDGenerator()),
 	)
 
-	otel.SetTracerProvider(tp)
+	otel.SetTracerProvider(tracerProvider)
 	otel.SetTextMapPropagator(xray.Propagator{})
 
 	return nil
@@ -65,15 +65,15 @@ func newExporter(ctx context.Context) (trace.SpanExporter, error) {
 		// No collector layer needed, eliminates ~20-25ms ADOT overhead.
 		return xrayudp.NewSpanExporter(ctx)
 	default:
-		return nil, fmt.Errorf("unsupported OTEL_EXPORTER: %q (supported: xrayudp, stdout)", os.Getenv("OTEL_EXPORTER"))
+		return nil, errors.Newf("unsupported OTEL_EXPORTER: %q (supported: xrayudp, stdout)", os.Getenv("OTEL_EXPORTER"))
 	}
 }
 
 // ShutdownTracing flushes pending traces and shuts down the tracer provider.
 // Must be called before the Lambda function exits.
 func ShutdownTracing(ctx context.Context) error {
-	if tp == nil {
+	if tracerProvider == nil {
 		return nil
 	}
-	return tp.Shutdown(ctx)
+	return tracerProvider.Shutdown(ctx)
 }

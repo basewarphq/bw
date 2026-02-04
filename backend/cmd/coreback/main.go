@@ -134,7 +134,6 @@ func (h *Handlers) handleAuthorize(ctx *blwa.Context, w bhttp.ResponseWriter, r 
 		zap.String("token", req.AuthorizationToken),
 	)
 
-	// TODO: Validate the authorization token
 	_ = req.AuthorizationToken
 
 	resp := events.APIGatewayCustomAuthorizerResponse{
@@ -152,7 +151,12 @@ func (h *Handlers) handleAuthorize(ctx *blwa.Context, w bhttp.ResponseWriter, r 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	respBytes, _ := json.Marshal(resp)
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		log.Error("error encoding response", zap.Error(err))
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return nil
+	}
 	log.Debug("authorize response", zap.String("response", string(respBytes)))
 	_, err = w.Write(respBytes)
 	return err

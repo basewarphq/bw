@@ -51,7 +51,7 @@ func SetupApp[S any](
 	// Create secondary shared region stacks with dependency on primary.
 	// Secondary shared stacks reference resources (like Route53 hosted zone IDs)
 	// stored by the primary shared stack, so they must deploy after it.
-	secondarySharedStacks := []awscdk.Stack{}
+	secondarySharedStacks := make([]awscdk.Stack, 0, len(config.SecondaryRegions))
 	for _, region := range config.SecondaryRegions {
 		secondarySharedStack := NewStackFromConfig(app, config, region)
 		_ = newShared(secondarySharedStack)

@@ -20,6 +20,7 @@ import (
 	"github.com/aws/jsii-runtime-go"
 	"github.com/basewarphq/bwapp/bwcdk/bwcdkloggroup"
 	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
+	"github.com/cockroachdb/errors"
 	"github.com/iancoleman/strcase"
 )
 
@@ -59,11 +60,11 @@ type Props struct {
 func parsePassThroughPath(path string) (suffix string, err error) {
 	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
 	if len(parts) != 2 || parts[0] != "l" || parts[1] == "" {
-		return "", fmt.Errorf("PassThroughPath must match pattern /l/<handler>, got %q", path)
+		return "", errors.Newf("PassThroughPath must match pattern /l/<handler>, got %q", path)
 	}
 	handler := parts[1]
 	if handler != strcase.ToKebab(handler) {
-		return "", fmt.Errorf("PassThroughPath handler must be kebab-case, got %q", handler)
+		return "", errors.Newf("PassThroughPath handler must be kebab-case, got %q", handler)
 	}
 	return strcase.ToCamel(handler), nil
 }
@@ -84,7 +85,7 @@ func ParseEntry(entry string) (component, command string, err error) {
 		}
 	}
 
-	return "", "", fmt.Errorf("entry must match pattern <component>/cmd/<command>, got %q", entry)
+	return "", "", errors.Newf("entry must match pattern <component>/cmd/<command>, got %q", entry)
 }
 
 type lambda struct {
