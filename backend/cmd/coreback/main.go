@@ -18,7 +18,8 @@ import (
 
 type Env struct {
 	bwlwa.BaseEnvironment
-	MainTableName string `env:"MAIN_TABLE_NAME"`
+	MainTableName  string `env:"MAIN_TABLE_NAME"`
+	MainSecretName string `env:"MAIN_SECRET_NAME"`
 }
 
 func main() {
@@ -88,7 +89,17 @@ func (h *Handlers) handleGateway(ctx context.Context, w bhttp.ResponseWriter, r 
 		}
 	}
 
-	_, err := w.Write([]byte("hello, world: " + path))
+	placeholder := "(secret not available)"
+	if env.MainSecretName != "" {
+		val, err := h.rt.Secret(ctx, env.MainSecretName, "placeholder")
+		if err != nil {
+			log.Warn("failed to fetch secret", zap.Error(err))
+		} else {
+			placeholder = val
+		}
+	}
+
+	_, err := w.Write([]byte("hello, world: " + path + " | secret: " + placeholder))
 	return err
 }
 
