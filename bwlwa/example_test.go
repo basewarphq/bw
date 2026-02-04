@@ -8,6 +8,7 @@ import (
 	"github.com/advdv/bhttp"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/basewarphq/bwapp/bwlwa"
 	"go.uber.org/fx"
@@ -22,15 +23,21 @@ type Env struct {
 }
 
 // ItemHandlers contains the HTTP handlers for item operations.
-type ItemHandlers struct{}
+// Dependencies are injected via the constructor, including AWS clients.
+type ItemHandlers struct {
+	rt     *bwlwa.Runtime[Env]
+	dynamo *dynamodb.Client
+}
 
-func NewItemHandlers() *ItemHandlers { return &ItemHandlers{} }
+func NewItemHandlers(rt *bwlwa.Runtime[Env], dynamo *dynamodb.Client) *ItemHandlers {
+	return &ItemHandlers{rt: rt, dynamo: dynamo}
+}
 
 // ListItems returns all items from the database.
-// Demonstrates: Log for trace-correlated logging, Env for configuration access.
+// Demonstrates: Log for trace-correlated logging, Runtime.Env for configuration access.
 func (h *ItemHandlers) ListItems(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
 	log := bwlwa.Log(ctx)
-	env := bwlwa.Env[Env](ctx)
+	env := h.rt.Env()
 
 	log.Info("listing items from table",
 		zap.String("table", env.MainTableName))
@@ -43,14 +50,14 @@ func (h *ItemHandlers) ListItems(ctx context.Context, w bhttp.ResponseWriter, r 
 }
 
 // GetItem returns a single item by ID.
-// Demonstrates: Span for adding trace events, Reverse for URL generation.
+// Demonstrates: Span for adding trace events, Runtime.Reverse for URL generation.
 func (h *ItemHandlers) GetItem(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
 	id := r.PathValue("id")
 
 	span := bwlwa.Span(ctx)
 	span.AddEvent("fetching item")
 
-	selfURL, _ := bwlwa.Reverse(ctx, "get-item", id)
+	selfURL, _ := h.rt.Reverse("get-item", id)
 
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(map[string]any{
@@ -60,10 +67,9 @@ func (h *ItemHandlers) GetItem(ctx context.Context, w bhttp.ResponseWriter, r *h
 }
 
 // CreateItem creates a new item in DynamoDB.
-// Demonstrates: AWS for typed client access, LWA for Lambda context.
+// Demonstrates: Direct AWS client injection, LWA for Lambda context.
 func (h *ItemHandlers) CreateItem(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
 	log := bwlwa.Log(ctx)
-	dynamo := bwlwa.AWS[dynamodb.Client](ctx)
 
 	// Check if running in Lambda (LWA returns nil outside Lambda).
 	if lwa := bwlwa.LWA(ctx); lwa != nil {
@@ -74,7 +80,7 @@ func (h *ItemHandlers) CreateItem(ctx context.Context, w bhttp.ResponseWriter, r
 	}
 
 	// Use the DynamoDB client (simplified example).
-	_ = dynamo
+	_ = h.dynamo
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -84,18 +90,42 @@ func (h *ItemHandlers) CreateItem(ctx context.Context, w bhttp.ResponseWriter, r
 	})
 }
 
-// GetConfig fetches configuration from the primary region SSM Parameter Store.
-// Demonstrates: Cross-region AWS client access using PrimaryRegion().
-func (h *ItemHandlers) GetConfig(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
-	log := bwlwa.Log(ctx)
+// Example demonstrates a complete bwlwa application with local region AWS clients.
+// AWS clients are injected directly into handler constructors via fx.
+func Example() {
+	bwlwa.NewApp[Env](
+		func(m *bwlwa.Mux, h *ItemHandlers) {
+			m.HandleFunc("GET /items", h.ListItems)
+			m.HandleFunc("GET /items/{id}", h.GetItem, "get-item")
+			m.HandleFunc("POST /items", h.CreateItem)
+		},
+		// Local region DynamoDB client - injected directly as *dynamodb.Client
+		bwlwa.WithAWSClient(func(cfg aws.Config) *dynamodb.Client {
+			return dynamodb.NewFromConfig(cfg)
+		}),
+		bwlwa.WithFx(fx.Provide(NewItemHandlers)),
+	).Run()
+}
 
-	// Get SSM client for primary region - reads shared config across all regions.
-	ssmClient := bwlwa.AWS[ssm.Client](ctx, bwlwa.PrimaryRegion())
+// ConfigHandlers demonstrates primary region client injection.
+type ConfigHandlers struct {
+	rt  *bwlwa.Runtime[Env]
+	ssm *bwlwa.Primary[ssm.Client]
+}
+
+func NewConfigHandlers(rt *bwlwa.Runtime[Env], ssm *bwlwa.Primary[ssm.Client]) *ConfigHandlers {
+	return &ConfigHandlers{rt: rt, ssm: ssm}
+}
+
+// GetConfig fetches configuration from the primary region SSM Parameter Store.
+// Demonstrates: Primary region client injection using Primary[T] wrapper.
+func (h *ConfigHandlers) GetConfig(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
+	log := bwlwa.Log(ctx)
 
 	log.Info("fetching config from primary region SSM")
 
-	// Use the SSM client (simplified example).
-	_ = ssmClient
+	// Access the SSM client via the Primary wrapper
+	_ = h.ssm.Client
 
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(map[string]string{
@@ -103,24 +133,123 @@ func (h *ItemHandlers) GetConfig(ctx context.Context, w bhttp.ResponseWriter, r 
 	})
 }
 
-// Example demonstrates a complete bwlwa application with four endpoints
-// showcasing Log, Env, Span, Reverse, AWS, LWA, and cross-region client access.
-func Example() {
+// Example_primaryRegion demonstrates primary region AWS client injection.
+// Use Primary[T] wrapper when you need to access resources in the primary
+// deployment region (e.g., shared config in SSM Parameter Store).
+func Example_primaryRegion() {
 	bwlwa.NewApp[Env](
-		func(m *bwlwa.Mux, h *ItemHandlers) {
-			m.HandleFunc("GET /items", h.ListItems)
-			m.HandleFunc("GET /items/{id}", h.GetItem, "get-item")
-			m.HandleFunc("POST /items", h.CreateItem)
+		func(m *bwlwa.Mux, h *ConfigHandlers) {
 			m.HandleFunc("GET /config", h.GetConfig)
 		},
-		// DynamoDB client for local region (default).
+		// Primary region SSM client - wrapped with Primary[T]
+		bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.Primary[ssm.Client] {
+			return bwlwa.NewPrimary(ssm.NewFromConfig(cfg))
+		}, bwlwa.ForPrimaryRegion()),
+		bwlwa.WithFx(fx.Provide(NewConfigHandlers)),
+	).Run()
+}
+
+// UploadHandlers demonstrates fixed region client injection.
+type UploadHandlers struct {
+	rt *bwlwa.Runtime[Env]
+	s3 *bwlwa.InRegion[s3.Client]
+}
+
+func NewUploadHandlers(rt *bwlwa.Runtime[Env], s3 *bwlwa.InRegion[s3.Client]) *UploadHandlers {
+	return &UploadHandlers{rt: rt, s3: s3}
+}
+
+// Upload uploads a file to a fixed-region S3 bucket.
+// Demonstrates: Fixed region client injection using InRegion[T] wrapper.
+func (h *UploadHandlers) Upload(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
+	log := bwlwa.Log(ctx)
+
+	log.Info("uploading to fixed region S3",
+		zap.String("region", h.s3.Region))
+
+	// Access the S3 client via the InRegion wrapper
+	_ = h.s3.Client
+
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(map[string]string{
+		"status": "uploaded",
+		"region": h.s3.Region,
+	})
+}
+
+// Example_fixedRegion demonstrates fixed region AWS client injection.
+// Use InRegion[T] wrapper when you need to access resources in a specific
+// region (e.g., S3 buckets that must be in a particular region).
+func Example_fixedRegion() {
+	bwlwa.NewApp[Env](
+		func(m *bwlwa.Mux, h *UploadHandlers) {
+			m.HandleFunc("POST /upload", h.Upload)
+		},
+		// Fixed region S3 client - wrapped with InRegion[T]
+		bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.InRegion[s3.Client] {
+			return bwlwa.NewInRegion(s3.NewFromConfig(cfg), "eu-central-1")
+		}, bwlwa.ForRegion("eu-central-1")),
+		bwlwa.WithFx(fx.Provide(NewUploadHandlers)),
+	).Run()
+}
+
+// MultiRegionHandlers demonstrates all three region types in one handler.
+type MultiHandlers struct {
+	rt     *bwlwa.Runtime[Env]
+	dynamo *dynamodb.Client               // local region (default)
+	ssm    *bwlwa.Primary[ssm.Client]     // primary region
+	s3     *bwlwa.InRegion[s3.Client]     // fixed region
+}
+
+func NewMultiHandlers(
+	rt *bwlwa.Runtime[Env],
+	dynamo *dynamodb.Client,
+	ssm *bwlwa.Primary[ssm.Client],
+	s3 *bwlwa.InRegion[s3.Client],
+) *MultiHandlers {
+	return &MultiHandlers{rt: rt, dynamo: dynamo, ssm: ssm, s3: s3}
+}
+
+func (h *MultiHandlers) Process(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
+	log := bwlwa.Log(ctx)
+
+	log.Info("processing with multi-region clients",
+		zap.String("s3_region", h.s3.Region))
+
+	// Use all three clients
+	_ = h.dynamo      // local region DynamoDB
+	_ = h.ssm.Client  // primary region SSM
+	_ = h.s3.Client   // fixed region S3
+
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(map[string]string{
+		"status":     "processed",
+		"s3_region":  h.s3.Region,
+	})
+}
+
+// Example_multiRegion demonstrates using all three region types together.
+// This is a common pattern where you need:
+// - Local region clients for low-latency data access
+// - Primary region clients for shared configuration
+// - Fixed region clients for specific resources
+func Example_multiRegion() {
+	bwlwa.NewApp[Env](
+		func(m *bwlwa.Mux, h *MultiHandlers) {
+			m.HandleFunc("POST /process", h.Process)
+		},
+		// Local region DynamoDB - direct injection
 		bwlwa.WithAWSClient(func(cfg aws.Config) *dynamodb.Client {
 			return dynamodb.NewFromConfig(cfg)
 		}),
-		// SSM client for primary region - reads shared config across all deployments.
-		bwlwa.WithAWSClient(func(cfg aws.Config) *ssm.Client {
-			return ssm.NewFromConfig(cfg)
+		// Primary region SSM - wrapped with Primary[T]
+		bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.Primary[ssm.Client] {
+			return bwlwa.NewPrimary(ssm.NewFromConfig(cfg))
 		}, bwlwa.ForPrimaryRegion()),
-		bwlwa.WithFx(fx.Provide(NewItemHandlers)),
+		// Fixed region S3 - wrapped with InRegion[T]
+		bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.InRegion[s3.Client] {
+			return bwlwa.NewInRegion(s3.NewFromConfig(cfg), "eu-central-1")
+		}, bwlwa.ForRegion("eu-central-1")),
+		bwlwa.WithFx(fx.Provide(NewMultiHandlers)),
 	).Run()
 }

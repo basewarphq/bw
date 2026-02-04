@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"reflect"
 	"time"
 
 	"github.com/advdv/bhttp"
@@ -20,12 +19,10 @@ const (
 	ctxKeyLWAContext
 )
 
-// deps holds all dependencies available via context.
+// deps holds request-scoped dependencies available via context.
+// App-scoped dependencies (env, mux, awsClients) are accessed via Runtime instead.
 type deps struct {
-	logger     *zap.Logger
-	env        any
-	mux        *Mux
-	awsClients map[string]any
+	logger *zap.Logger
 }
 
 // LWAContext contains Lambda execution context from the x-amzn-lambda-context header.
@@ -129,56 +126,4 @@ func traceFields(ctx context.Context) []zap.Field {
 		zap.String("trace_id", sc.TraceID().String()),
 		zap.String("span_id", sc.SpanID().String()),
 	}
-}
-
-// Env retrieves the environment configuration from the context.
-func Env[E Environment](ctx context.Context) E {
-	d := depsFromContext(ctx)
-	env, ok := d.env.(E)
-	if !ok {
-		panic("bwlwa: environment type mismatch")
-	}
-	return env
-}
-
-// AWS retrieves a registered AWS client by type from context.
-// By default, returns the client registered for the local region (AWS_REGION).
-// Pass an optional Region to retrieve clients registered for other regions:
-//
-//	dynamo := bwlwa.AWS[dynamodb.Client](ctx)                         // local region (default)
-//	s3Client := bwlwa.AWS[s3.Client](ctx, bwlwa.PrimaryRegion())      // primary region
-//	sqsClient := bwlwa.AWS[sqs.Client](ctx, bwlwa.FixedRegion("us-east-1"))
-func AWS[T any](ctx context.Context, region ...Region) *T {
-	d := depsFromContext(ctx)
-	env := d.env.(Environment)
-
-	var r Region = LocalRegion()
-	if len(region) > 0 {
-		r = region[0]
-	}
-
-	key := clientKey(typeKey[T](), r, env)
-	client, ok := d.awsClients[key]
-	if !ok {
-		panic("bwlwa: AWS client " + key + " not found; use WithAWSClient()")
-	}
-	return client.(*T)
-}
-
-// Reverse returns the URL for a named route with the given parameters.
-// The route must have been registered with a name using Handle/HandleFunc.
-func Reverse(ctx context.Context, name string, params ...string) (string, error) {
-	d := depsFromContext(ctx)
-	return d.mux.Reverse(name, params...)
-}
-
-// typeKey returns a unique string key for a type.
-func typeKey[T any]() string {
-	var zero T
-	t := reflect.TypeOf(zero)
-	if t == nil {
-		var ptr *T
-		t = reflect.TypeOf(ptr).Elem()
-	}
-	return t.PkgPath() + "." + t.Name()
 }

@@ -41,23 +41,47 @@
 // AWS_REGION is set automatically by the Lambda runtime, while BW_PRIMARY_REGION
 // is injected by the bwcdklwalambda CDK construct.
 //
+// # Runtime
+//
+// [Runtime] provides access to app-scoped dependencies and should be injected into
+// handler constructors via fx. This follows idiomatic Go patterns where app-level
+// dependencies are passed explicitly, not pulled from context.
+//
+// Runtime provides:
+//   - [Runtime.Env] returns the typed environment configuration
+//   - [Runtime.Reverse] generates URLs for named routes
+//
+// Example handler struct with Runtime:
+//
+//	type Handlers struct {
+//	    rt     *bwlwa.Runtime[Env]
+//	    dynamo *dynamodb.Client
+//	}
+//
+//	func NewHandlers(rt *bwlwa.Runtime[Env], dynamo *dynamodb.Client) *Handlers {
+//	    return &Handlers{rt: rt, dynamo: dynamo}
+//	}
+//
+//	func (h *Handlers) GetItem(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
+//	    env := h.rt.Env()                      // typed environment
+//	    url, _ := h.rt.Reverse("get-item", id) // URL generation
+//	    h.dynamo.GetItem(ctx, ...)             // direct client access
+//	    // ...
+//	}
+//
 // # Context Functions
 //
-// All request context is accessed through typed functions:
+// Request-scoped values are accessed through context functions:
 //
 //   - [Log] returns a trace-correlated zap logger
 //   - [Span] returns the current OpenTelemetry span for custom instrumentation
-//   - [Env] retrieves the typed environment configuration
-//   - [AWS] retrieves a registered AWS SDK client by type
 //   - [LWA] retrieves Lambda execution context (request ID, deadline, etc.)
-//   - [Reverse] generates URLs for named routes
 //
 // Example handler using context functions:
 //
 //	func (h *Handlers) GetItem(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
-//	    log := bwlwa.Log(ctx)           // trace-correlated logger
-//	    env := bwlwa.Env[Env](ctx)      // typed environment
-//	    dynamo := bwlwa.AWS[dynamodb.Client](ctx)  // AWS client
+//	    log := bwlwa.Log(ctx)  // trace-correlated logger
+//	    env := h.rt.Env()      // from Runtime, not context
 //
 //	    bwlwa.Span(ctx).AddEvent("fetching item")
 //
@@ -76,39 +100,88 @@
 //
 // # AWS Clients
 //
-// Register AWS SDK v2 clients with [WithAWSClient]:
+// AWS SDK v2 clients are registered with [WithAWSClient] and injected directly
+// into handler constructors via fx. This eliminates reflection and makes
+// dependencies explicit in the type system.
 //
+// # Local Region Clients (Default)
+//
+// For clients that should use the Lambda's local region (AWS_REGION), register
+// the client factory directly. The client type is injected as-is:
+//
+//	// Registration
 //	bwlwa.WithAWSClient(func(cfg aws.Config) *dynamodb.Client {
 //	    return dynamodb.NewFromConfig(cfg)
 //	})
 //
-// Clients are automatically instrumented with OpenTelemetry and accessible
-// via [AWS] in handlers.
+//	// Injection - receives *dynamodb.Client directly
+//	func NewHandlers(dynamo *dynamodb.Client) *Handlers {
+//	    return &Handlers{dynamo: dynamo}
+//	}
 //
-// # Cross-Region AWS Clients
+// # Primary Region Clients
 //
-// By default, AWS clients target the local region (AWS_REGION). For cross-region
-// operations, register clients for specific regions:
+// For clients that must target the primary deployment region (BW_PRIMARY_REGION),
+// wrap the client with [Primary] to make the region explicit in the type:
 //
-//	// Local region (default)
-//	bwlwa.WithAWSClient(dynamodb.NewFromConfig)
+//	// Registration
+//	bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.Primary[ssm.Client] {
+//	    return bwlwa.NewPrimary(ssm.NewFromConfig(cfg))
+//	}, bwlwa.ForPrimaryRegion())
 //
-//	// Primary deployment region (uses PRIMARY_REGION env var)
-//	bwlwa.WithAWSClient(s3.NewFromConfig, bwlwa.ForPrimaryRegion())
+//	// Injection - receives *bwlwa.Primary[ssm.Client]
+//	func NewHandlers(ssm *bwlwa.Primary[ssm.Client]) *Handlers {
+//	    return &Handlers{ssm: ssm}
+//	}
 //
-//	// Fixed region
-//	bwlwa.WithAWSClient(sqs.NewFromConfig, bwlwa.ForRegion("us-east-1"))
+//	// Usage - access via .Client field
+//	h.ssm.Client.GetParameter(ctx, ...)
 //
-// Retrieve clients in handlers with an optional region argument:
-//
-//	dynamo := bwlwa.AWS[dynamodb.Client](ctx)                          // local region
-//	s3Client := bwlwa.AWS[s3.Client](ctx, bwlwa.PrimaryRegion())       // primary region
-//	sqsClient := bwlwa.AWS[sqs.Client](ctx, bwlwa.FixedRegion("us-east-1"))
-//
-// Common use cases for cross-region clients:
-//   - Reading shared configuration from primary region DynamoDB/SSM
+// Common use cases for primary region clients:
+//   - Generating S3 presigned URLs that work across all regions
 //   - Publishing to centralized SQS queues or SNS topics
+//   - Accessing primary-region-only resources (e.g., certain AWS services)
+//
+// # Fixed Region Clients
+//
+// For clients that must target a specific region, wrap with [InRegion]:
+//
+//	// Registration
+//	bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.InRegion[s3.Client] {
+//	    return bwlwa.NewInRegion(s3.NewFromConfig(cfg), "eu-central-1")
+//	}, bwlwa.ForRegion("eu-central-1"))
+//
+//	// Injection - receives *bwlwa.InRegion[s3.Client]
+//	func NewHandlers(s3 *bwlwa.InRegion[s3.Client]) *Handlers {
+//	    return &Handlers{s3: s3}
+//	}
+//
+//	// Usage - access client and region via fields
+//	h.s3.Client.PutObject(ctx, ...)
+//	log.Info("uploading", zap.String("region", h.s3.Region))
+//
+// Common use cases for fixed region clients:
 //   - Accessing S3 buckets in specific regions
+//   - Targeting SQS queues in particular regions
+//   - Cross-region replication operations
+//
+// # Multiple Region Types Together
+//
+// A handler can inject clients for different regions simultaneously:
+//
+//	type Handlers struct {
+//	    dynamo *dynamodb.Client               // local region
+//	    ssm    *bwlwa.Primary[ssm.Client]     // primary region
+//	    s3     *bwlwa.InRegion[s3.Client]     // fixed region
+//	}
+//
+//	func NewHandlers(
+//	    dynamo *dynamodb.Client,
+//	    ssm *bwlwa.Primary[ssm.Client],
+//	    s3 *bwlwa.InRegion[s3.Client],
+//	) *Handlers {
+//	    return &Handlers{dynamo: dynamo, ssm: ssm, s3: s3}
+//	}
 //
 // # Health Checks
 //

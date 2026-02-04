@@ -23,13 +23,29 @@ type AppConfig struct {
 // Option configures the App.
 type Option func(*AppConfig)
 
-// WithAWSClient registers an AWS SDK v2 client factory.
-// By default, clients target the primary region (PRIMARY_REGION env var).
-// Use ForLocalRegion() to target the Lambda's local region instead.
-// Use ForRegion("eu-west-1") to target a specific region.
-func WithAWSClient[T any](factory func(aws.Config) *T, opts ...ClientOption) Option {
+// WithAWSClient registers an AWS SDK v2 client for dependency injection.
+// Clients are injected directly into handler constructors via fx.
+//
+// By default, clients target the local region (AWS_REGION env var):
+//
+//	bwlwa.WithAWSClient(func(cfg aws.Config) *dynamodb.Client {
+//	    return dynamodb.NewFromConfig(cfg)
+//	})
+//
+// For primary region, wrap with Primary[T] and use ForPrimaryRegion():
+//
+//	bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.Primary[ssm.Client] {
+//	    return bwlwa.NewPrimary(ssm.NewFromConfig(cfg))
+//	}, bwlwa.ForPrimaryRegion())
+//
+// For fixed region, wrap with InRegion[T] and use ForRegion():
+//
+//	bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.InRegion[sqs.Client] {
+//	    return bwlwa.NewInRegion(sqs.NewFromConfig(cfg), "eu-west-1")
+//	}, bwlwa.ForRegion("eu-west-1"))
+func WithAWSClient[T any](factory func(aws.Config) T, opts ...ClientOption) Option {
 	return func(c *AppConfig) {
-		c.AWSClients = append(c.AWSClients, RegisterAWSClient(factory, opts...))
+		c.FxOptions = append(c.FxOptions, AWSClientProvider(factory, opts...))
 	}
 }
 
@@ -80,6 +96,9 @@ func NewApp[E Environment](routing any, opts ...Option) *App {
 		fx.Provide(provideAWSConfig),
 		fx.Supply(cfg.ServerConfig),
 		fx.Provide(NewServer),
+		fx.Provide(func(e E, m *Mux) *Runtime[E] {
+			return NewRuntime(e, m)
+		}),
 		fx.Invoke(startServerHook),
 		fx.Invoke(routing),
 	}

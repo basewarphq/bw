@@ -13,80 +13,67 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/basewarphq/bwapp/bwlwa"
+	"go.uber.org/fx"
 )
-
-func TestAWSClient_DefaultTargetsLocalRegion(t *testing.T) {
-	factory := bwlwa.RegisterAWSClient(func(cfg aws.Config) *dynamodb.Client {
-		return dynamodb.NewFromConfig(cfg)
-	})
-
-	if factory.Region == nil {
-		t.Fatal("expected Region to be set (LocalRegion by default)")
-	}
-}
-
-func TestAWSClient_ForPrimaryRegion(t *testing.T) {
-	factory := bwlwa.RegisterAWSClient(func(cfg aws.Config) *s3.Client {
-		return s3.NewFromConfig(cfg)
-	}, bwlwa.ForPrimaryRegion())
-
-	if factory.Region == nil {
-		t.Fatal("expected Region to be set")
-	}
-}
-
-func TestAWSClient_ForFixedRegion(t *testing.T) {
-	factory := bwlwa.RegisterAWSClient(func(cfg aws.Config) *sqs.Client {
-		return sqs.NewFromConfig(cfg)
-	}, bwlwa.ForRegion("ap-northeast-1"))
-
-	if factory.Region == nil {
-		t.Fatal("expected Region to be set")
-	}
-}
 
 type regionTestEnv struct {
 	bwlwa.BaseEnvironment
 }
 
+// RegionHandlers demonstrates all three region types injected via fx.
+type RegionHandlers struct {
+	rt     *bwlwa.Runtime[regionTestEnv]
+	dynamo *dynamodb.Client               // local region
+	s3     *bwlwa.Primary[s3.Client]      // primary region
+	sqs    *bwlwa.InRegion[sqs.Client]    // fixed region
+}
+
+func NewRegionHandlers(
+	rt *bwlwa.Runtime[regionTestEnv],
+	dynamo *dynamodb.Client,
+	s3 *bwlwa.Primary[s3.Client],
+	sqs *bwlwa.InRegion[sqs.Client],
+) *RegionHandlers {
+	return &RegionHandlers{rt: rt, dynamo: dynamo, s3: s3, sqs: sqs}
+}
+
+func (h *RegionHandlers) TestClients(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(map[string]any{
+		"local":        h.dynamo != nil,
+		"primary":      h.s3 != nil && h.s3.Client != nil,
+		"fixed":        h.sqs != nil && h.sqs.Client != nil,
+		"fixed_region": h.sqs.Region,
+	})
+}
+
 func TestAWS_RetrievesCorrectClient(t *testing.T) {
 	t.Setenv("BW_PRIMARY_REGION", "eu-central-1")
 	t.Setenv("AWS_REGION", "eu-west-1")
-	t.Setenv("AWS_LWA_PORT", "18082")
+	t.Setenv("AWS_LWA_PORT", "18085")
 	t.Setenv("BW_SERVICE_NAME", "region-test")
 	t.Setenv("AWS_LWA_READINESS_CHECK_PATH", "/health")
 	t.Setenv("OTEL_SDK_DISABLED", "true")
 	t.Setenv("AWS_ACCESS_KEY_ID", "test")
 	t.Setenv("AWS_SECRET_ACCESS_KEY", "test")
 
-	var localClient, primaryClient, fixedClient bool
-
 	app := bwlwa.NewApp[regionTestEnv](
-		func(m *bwlwa.Mux) {
-			m.HandleFunc("GET /test", func(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
-				// Should be able to retrieve the local region client (default)
-				dynamo := bwlwa.AWS[dynamodb.Client](ctx)
-				localClient = dynamo != nil
-
-				// Should be able to retrieve primary region client with optional arg
-				s3Client := bwlwa.AWS[s3.Client](ctx, bwlwa.PrimaryRegion())
-				primaryClient = s3Client != nil
-
-				// Should be able to retrieve fixed region client
-				sqsClient := bwlwa.AWS[sqs.Client](ctx, bwlwa.FixedRegion("ap-northeast-1"))
-				fixedClient = sqsClient != nil
-
-				w.Header().Set("Content-Type", "application/json")
-				return json.NewEncoder(w).Encode(map[string]bool{
-					"local":   localClient,
-					"primary": primaryClient,
-					"fixed":   fixedClient,
-				})
-			})
+		func(m *bwlwa.Mux, h *RegionHandlers) {
+			m.HandleFunc("GET /test", h.TestClients)
 		},
-		bwlwa.WithAWSClient(func(cfg aws.Config) *dynamodb.Client { return dynamodb.NewFromConfig(cfg) }),
-		bwlwa.WithAWSClient(func(cfg aws.Config) *s3.Client { return s3.NewFromConfig(cfg) }, bwlwa.ForPrimaryRegion()),
-		bwlwa.WithAWSClient(func(cfg aws.Config) *sqs.Client { return sqs.NewFromConfig(cfg) }, bwlwa.ForRegion("ap-northeast-1")),
+		// Local region (default)
+		bwlwa.WithAWSClient(func(cfg aws.Config) *dynamodb.Client {
+			return dynamodb.NewFromConfig(cfg)
+		}),
+		// Primary region - wrapped with Primary[T]
+		bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.Primary[s3.Client] {
+			return bwlwa.NewPrimary(s3.NewFromConfig(cfg))
+		}, bwlwa.ForPrimaryRegion()),
+		// Fixed region - wrapped with InRegion[T]
+		bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.InRegion[sqs.Client] {
+			return bwlwa.NewInRegion(sqs.NewFromConfig(cfg), "ap-northeast-1")
+		}, bwlwa.ForRegion("ap-northeast-1")),
+		bwlwa.WithFx(fx.Provide(NewRegionHandlers)),
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -96,25 +83,28 @@ func TestAWS_RetrievesCorrectClient(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get("http://localhost:18082/test")
+	resp, err := client.Get("http://localhost:18085/test")
 	if err != nil {
 		t.Fatalf("GET /test failed: %v", err)
 	}
 	defer resp.Body.Close()
 
-	var result map[string]bool
+	var result map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		t.Fatalf("decode failed: %v", err)
 	}
 
-	if !result["local"] {
+	if result["local"] != true {
 		t.Error("local region client should not be nil")
 	}
-	if !result["primary"] {
+	if result["primary"] != true {
 		t.Error("primary region client should not be nil")
 	}
-	if !result["fixed"] {
+	if result["fixed"] != true {
 		t.Error("fixed region client should not be nil")
+	}
+	if result["fixed_region"] != "ap-northeast-1" {
+		t.Errorf("expected fixed_region=ap-northeast-1, got %v", result["fixed_region"])
 	}
 
 	cancel()
@@ -124,7 +114,7 @@ func TestAWS_RetrievesCorrectClient(t *testing.T) {
 func TestAWS_VerifiesRegionInConfig(t *testing.T) {
 	t.Setenv("BW_PRIMARY_REGION", "eu-central-1")
 	t.Setenv("AWS_REGION", "eu-west-1")
-	t.Setenv("AWS_LWA_PORT", "18083")
+	t.Setenv("AWS_LWA_PORT", "18086")
 	t.Setenv("BW_SERVICE_NAME", "region-verify-test")
 	t.Setenv("AWS_LWA_READINESS_CHECK_PATH", "/health")
 	t.Setenv("OTEL_SDK_DISABLED", "true")
@@ -133,25 +123,40 @@ func TestAWS_VerifiesRegionInConfig(t *testing.T) {
 
 	var capturedLocalRegion, capturedPrimaryRegion, capturedFixedRegion string
 
+	// Handler struct that forces fx to create all three clients
+	type verifyHandlers struct {
+		dynamo *dynamodb.Client
+		s3     *bwlwa.Primary[s3.Client]
+		sqs    *bwlwa.InRegion[sqs.Client]
+	}
+
 	app := bwlwa.NewApp[regionTestEnv](
-		func(m *bwlwa.Mux) {
+		func(m *bwlwa.Mux, h *verifyHandlers) {
 			m.HandleFunc("GET /test", func(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
 				w.WriteHeader(http.StatusOK)
 				return nil
 			})
 		},
+		// Capture region from each factory
 		bwlwa.WithAWSClient(func(cfg aws.Config) *dynamodb.Client {
 			capturedLocalRegion = cfg.Region
 			return dynamodb.NewFromConfig(cfg)
 		}),
-		bwlwa.WithAWSClient(func(cfg aws.Config) *s3.Client {
+		bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.Primary[s3.Client] {
 			capturedPrimaryRegion = cfg.Region
-			return s3.NewFromConfig(cfg)
+			return bwlwa.NewPrimary(s3.NewFromConfig(cfg))
 		}, bwlwa.ForPrimaryRegion()),
-		bwlwa.WithAWSClient(func(cfg aws.Config) *sqs.Client {
+		bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.InRegion[sqs.Client] {
 			capturedFixedRegion = cfg.Region
-			return sqs.NewFromConfig(cfg)
+			return bwlwa.NewInRegion(sqs.NewFromConfig(cfg), "ap-northeast-1")
 		}, bwlwa.ForRegion("ap-northeast-1")),
+		bwlwa.WithFx(fx.Provide(func(
+			dynamo *dynamodb.Client,
+			s3 *bwlwa.Primary[s3.Client],
+			sqs *bwlwa.InRegion[sqs.Client],
+		) *verifyHandlers {
+			return &verifyHandlers{dynamo: dynamo, s3: s3, sqs: sqs}
+		})),
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())

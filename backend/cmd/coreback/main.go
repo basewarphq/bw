@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/basewarphq/bwapp/bwlwa"
+	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
@@ -26,12 +27,22 @@ func main() {
 		bwlwa.WithAWSClient(func(cfg aws.Config) *dynamodb.Client {
 			return dynamodb.NewFromConfig(cfg)
 		}),
+		bwlwa.WithFx(fx.Provide(NewHandlers)),
 	).Run()
 }
 
-func routing(m *bwlwa.Mux) {
-	m.HandleFunc("POST /l/authorize", handleAuthorize)
-	m.HandleFunc("GET /g/{path...}", handleGateway)
+type Handlers struct {
+	rt     *bwlwa.Runtime[Env]
+	dynamo *dynamodb.Client
+}
+
+func NewHandlers(rt *bwlwa.Runtime[Env], dynamo *dynamodb.Client) *Handlers {
+	return &Handlers{rt: rt, dynamo: dynamo}
+}
+
+func routing(m *bwlwa.Mux, h *Handlers) {
+	m.HandleFunc("POST /l/authorize", h.handleAuthorize)
+	m.HandleFunc("GET /g/{path...}", h.handleGateway)
 	m.HandleFunc("/{path...}", handleCatchAll)
 }
 
@@ -49,10 +60,9 @@ func handleCatchAll(ctx context.Context, w bhttp.ResponseWriter, r *http.Request
 	return err
 }
 
-func handleGateway(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
+func (h *Handlers) handleGateway(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
 	log := bwlwa.Log(ctx)
-	env := bwlwa.Env[Env](ctx)
-	dynamoClient := bwlwa.AWS[dynamodb.Client](ctx)
+	env := h.rt.Env()
 
 	log.Info("gateway",
 		zap.String("method", r.Method),
@@ -64,7 +74,7 @@ func handleGateway(ctx context.Context, w bhttp.ResponseWriter, r *http.Request)
 
 	if env.MainTableName != "" {
 		var limit int32 = 1
-		out, err := dynamoClient.Scan(ctx, &dynamodb.ScanInput{
+		out, err := h.dynamo.Scan(ctx, &dynamodb.ScanInput{
 			TableName: &env.MainTableName,
 			Limit:     &limit,
 		})
@@ -82,7 +92,7 @@ func handleGateway(ctx context.Context, w bhttp.ResponseWriter, r *http.Request)
 	return err
 }
 
-func handleAuthorize(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
+func (h *Handlers) handleAuthorize(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
 	log := bwlwa.Log(ctx)
 	span := bwlwa.Span(ctx)
 

@@ -25,18 +25,32 @@ type TestEnv struct {
 	QueueURL      string `env:"QUEUE_URL,required"`
 }
 
-type Handlers struct{}
+// Handlers demonstrates direct fx injection of AWS clients.
+type Handlers struct {
+	rt     *bwlwa.Runtime[TestEnv]
+	dynamo *dynamodb.Client
+	s3     *s3.Client
+	sqs    *sqs.Client
+}
 
-func NewHandlers() *Handlers { return &Handlers{} }
+// NewHandlers receives AWS clients directly via fx injection.
+func NewHandlers(
+	rt *bwlwa.Runtime[TestEnv],
+	dynamo *dynamodb.Client,
+	s3 *s3.Client,
+	sqs *sqs.Client,
+) *Handlers {
+	return &Handlers{rt: rt, dynamo: dynamo, s3: s3, sqs: sqs}
+}
 
 // 1. GET /context - tests Log, Span, Env, LWA, Reverse
 func (h *Handlers) TestContext(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
 	log := bwlwa.Log(ctx)
 	span := bwlwa.Span(ctx)
-	env := bwlwa.Env[TestEnv](ctx)
+	env := h.rt.Env()
 	lwa := bwlwa.LWA(ctx)
 
-	itemURL, err := bwlwa.Reverse(ctx, "get-item", "test-123")
+	itemURL, err := h.rt.Reverse("get-item", "test-123")
 	if err != nil {
 		http.Error(w, "reverse failed: "+err.Error(), http.StatusInternalServerError)
 		return nil
@@ -53,32 +67,28 @@ func (h *Handlers) TestContext(ctx context.Context, w bhttp.ResponseWriter, r *h
 			"queue":        env.QueueURL,
 			"service_name": env.ServiceName,
 		},
-		"span_valid":  span.SpanContext().IsValid(),
-		"lwa_nil":     lwa == nil,
+		"span_valid":   span.SpanContext().IsValid(),
+		"lwa_nil":      lwa == nil,
 		"reversed_url": itemURL,
 	})
 }
 
-// 2. GET /aws - tests all AWS clients
+// 2. GET /aws - tests all AWS clients (now directly injected)
 func (h *Handlers) TestAWS(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
-	dynamo := bwlwa.AWS[dynamodb.Client](ctx)
-	s3Client := bwlwa.AWS[s3.Client](ctx)
-	sqsClient := bwlwa.AWS[sqs.Client](ctx)
-
 	bwlwa.Log(ctx).Info("testing AWS clients")
 
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(map[string]bool{
-		"dynamo": dynamo != nil,
-		"s3":     s3Client != nil,
-		"sqs":    sqsClient != nil,
+		"dynamo": h.dynamo != nil,
+		"s3":     h.s3 != nil,
+		"sqs":    h.sqs != nil,
 	})
 }
 
 // 3. POST /items - tests request body, logging with env
 func (h *Handlers) CreateItem(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
 	log := bwlwa.Log(ctx)
-	env := bwlwa.Env[TestEnv](ctx)
+	env := h.rt.Env()
 	span := bwlwa.Span(ctx)
 
 	var body map[string]any
@@ -103,9 +113,9 @@ func (h *Handlers) CreateItem(ctx context.Context, w bhttp.ResponseWriter, r *ht
 func (h *Handlers) GetItem(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
 	id := r.PathValue("id")
 	log := bwlwa.Log(ctx)
-	env := bwlwa.Env[TestEnv](ctx)
+	env := h.rt.Env()
 
-	selfURL, _ := bwlwa.Reverse(ctx, "get-item", id)
+	selfURL, _ := h.rt.Reverse("get-item", id)
 
 	log.Info("getting item")
 
@@ -129,7 +139,7 @@ func setupTestEnv(t *testing.T) {
 	t.Setenv("AWS_ACCESS_KEY_ID", "test")
 	t.Setenv("AWS_SECRET_ACCESS_KEY", "test")
 	t.Setenv("AWS_REGION", "us-east-1")
-	t.Setenv("BW_PRIMARY_REGION", "us-east-1")
+	t.Setenv("BW_PRIMARY_REGION", "eu-west-1")
 }
 
 func TestApp_ContextFeatures(t *testing.T) {
@@ -142,6 +152,7 @@ func TestApp_ContextFeatures(t *testing.T) {
 			m.HandleFunc("POST /items", h.CreateItem)
 			m.HandleFunc("GET /items/{id}", h.GetItem, "get-item")
 		},
+		// AWS clients are registered and injected directly via fx
 		bwlwa.WithAWSClient(func(cfg aws.Config) *dynamodb.Client { return dynamodb.NewFromConfig(cfg) }),
 		bwlwa.WithAWSClient(func(cfg aws.Config) *s3.Client { return s3.NewFromConfig(cfg) }),
 		bwlwa.WithAWSClient(func(cfg aws.Config) *sqs.Client { return sqs.NewFromConfig(cfg) }),

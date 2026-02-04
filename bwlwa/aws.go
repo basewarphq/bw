@@ -12,11 +12,56 @@ import (
 	"go.uber.org/fx"
 )
 
-// AWSClientFactory holds a factory function for creating AWS clients.
-type AWSClientFactory struct {
-	TypeKey string
-	Region  Region
-	Factory func(aws.Config) any
+// Primary wraps an AWS client for the primary deployment region.
+// Use this when registering and injecting clients that must target PRIMARY_REGION.
+//
+// Registration:
+//
+//	bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.Primary[ssm.Client] {
+//	    return bwlwa.NewPrimary(ssm.NewFromConfig(cfg))
+//	}, bwlwa.ForPrimaryRegion())
+//
+// Injection:
+//
+//	func NewHandlers(ssm *bwlwa.Primary[ssm.Client]) *Handlers
+//
+// Usage:
+//
+//	h.ssm.Client.GetParameter(ctx, ...)
+type Primary[T any] struct {
+	Client *T
+}
+
+// newPrimary creates a Primary wrapper for an AWS client.
+func newPrimary[T any](client *T) *Primary[T] {
+	return &Primary[T]{Client: client}
+}
+
+// InRegion wraps an AWS client configured for a specific fixed region.
+// Use this when registering and injecting clients that must target a specific region.
+//
+// Registration:
+//
+//	bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.InRegion[sqs.Client] {
+//	    return bwlwa.NewInRegion(sqs.NewFromConfig(cfg), "us-east-1")
+//	}, bwlwa.ForRegion("us-east-1"))
+//
+// Injection:
+//
+//	func NewHandlers(sqs *bwlwa.InRegion[sqs.Client]) *Handlers
+//
+// Usage:
+//
+//	h.sqs.Client.SendMessage(ctx, ...)
+//	region := h.sqs.Region // "us-east-1"
+type InRegion[T any] struct {
+	Client *T
+	Region string
+}
+
+// newInRegion creates an InRegion wrapper for an AWS client.
+func newInRegion[T any](client *T, region string) *InRegion[T] {
+	return &InRegion[T]{Client: client, Region: region}
 }
 
 // clientOptions holds configuration for AWS client registration.
@@ -29,6 +74,12 @@ type ClientOption func(*clientOptions)
 
 // ForPrimaryRegion configures the client to use the PRIMARY_REGION env var.
 // Use this for cross-region operations that must target the primary deployment region.
+//
+// The factory should return *bwlwa.Primary[T] to make the region explicit in the type:
+//
+//	bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.Primary[ssm.Client] {
+//	    return bwlwa.NewPrimary(ssm.NewFromConfig(cfg))
+//	}, bwlwa.ForPrimaryRegion())
 func ForPrimaryRegion() ClientOption {
 	return func(o *clientOptions) {
 		o.region = PrimaryRegion()
@@ -36,22 +87,16 @@ func ForPrimaryRegion() ClientOption {
 }
 
 // ForRegion configures the client to use a specific fixed region.
+//
+// The factory should return *bwlwa.InRegion[T] to make the region explicit in the type:
+//
+//	bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.InRegion[sqs.Client] {
+//	    return bwlwa.NewInRegion(sqs.NewFromConfig(cfg), "us-east-1")
+//	}, bwlwa.ForRegion("us-east-1"))
 func ForRegion(region string) ClientOption {
 	return func(o *clientOptions) {
 		o.region = FixedRegion(region)
 	}
-}
-
-// clientKey returns the storage key for a client type and region.
-func clientKey(typeKey string, region Region, env Environment) string {
-	if region == nil {
-		return typeKey
-	}
-	r := region.resolve(env)
-	if r == "" {
-		return typeKey
-	}
-	return typeKey + "@" + r
 }
 
 const awsConfigTimeout = 10 * time.Second
@@ -78,20 +123,62 @@ func provideAWSConfig(lc fx.Lifecycle, tp trace.TracerProvider, prop propagation
 	return cfg, nil
 }
 
-// RegisterAWSClient creates a factory for a typed AWS client.
-// By default, clients target the local region (AWS_REGION env var).
-// Use ForPrimaryRegion() to target the primary deployment region for cross-region operations.
-// Use ForRegion("eu-west-1") to target a specific region.
-func RegisterAWSClient[T any](factory func(aws.Config) *T, opts ...ClientOption) AWSClientFactory {
+// AWSClientProvider creates an fx.Option that provides an AWS client for injection.
+// The factory receives an aws.Config with the region already configured.
+//
+// For local region clients (default), the factory returns *T directly:
+//
+//	bwlwa.WithAWSClient(func(cfg aws.Config) *dynamodb.Client {
+//	    return dynamodb.NewFromConfig(cfg)
+//	})
+//
+// For primary region clients, wrap with Primary[T]:
+//
+//	bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.Primary[ssm.Client] {
+//	    return bwlwa.NewPrimary(ssm.NewFromConfig(cfg))
+//	}, bwlwa.ForPrimaryRegion())
+//
+// For fixed region clients, wrap with InRegion[T]:
+//
+//	bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.InRegion[sqs.Client] {
+//	    return bwlwa.NewInRegion(sqs.NewFromConfig(cfg), "us-east-1")
+//	}, bwlwa.ForRegion("us-east-1"))
+func AWSClientProvider[T any](factory func(aws.Config) T, opts ...ClientOption) fx.Option {
 	options := &clientOptions{
-		region: LocalRegion(), // default to local region
+		region: LocalRegion(),
 	}
 	for _, opt := range opts {
 		opt(options)
 	}
-	return AWSClientFactory{
-		TypeKey: typeKey[T](),
-		Region:  options.region,
-		Factory: func(cfg aws.Config) any { return factory(cfg) },
-	}
+
+	return fx.Provide(func(cfg aws.Config, env Environment) T {
+		awsCfg := cfg.Copy()
+		if options.region != nil {
+			r := options.region.resolve(env)
+			if r != "" {
+				awsCfg.Region = r
+			}
+		}
+		return factory(awsCfg)
+	})
+}
+
+// NewPrimary creates a Primary wrapper for an AWS client configured for the primary region.
+// Use this in your client factory when registering with ForPrimaryRegion():
+//
+//	bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.Primary[ssm.Client] {
+//	    return bwlwa.NewPrimary(ssm.NewFromConfig(cfg))
+//	}, bwlwa.ForPrimaryRegion())
+func NewPrimary[T any](client *T) *Primary[T] {
+	return newPrimary(client)
+}
+
+// NewInRegion creates an InRegion wrapper for an AWS client configured for a fixed region.
+// Use this in your client factory when registering with ForRegion():
+//
+//	bwlwa.WithAWSClient(func(cfg aws.Config) *bwlwa.InRegion[sqs.Client] {
+//	    return bwlwa.NewInRegion(sqs.NewFromConfig(cfg), "us-east-1")
+//	}, bwlwa.ForRegion("us-east-1"))
+func NewInRegion[T any](client *T, region string) *InRegion[T] {
+	return newInRegion(client, region)
 }

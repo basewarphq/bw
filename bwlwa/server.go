@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/advdv/bhttp"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/fx"
@@ -15,7 +14,6 @@ import (
 
 // ServerConfig holds optional configuration for the HTTP server.
 type ServerConfig struct {
-	AWSClients    []AWSClientFactory
 	HealthHandler func(http.ResponseWriter, *http.Request)
 }
 
@@ -26,7 +24,6 @@ type ServerParams struct {
 	Env        Environment
 	Mux        *Mux
 	Logger     *zap.Logger
-	AWSConfig  aws.Config
 	TracerProv trace.TracerProvider
 	Propagator propagation.TextMapPropagator
 }
@@ -34,21 +31,7 @@ type ServerParams struct {
 // NewServer creates an HTTP server with all middleware and routing configured.
 func NewServer(params ServerParams, cfg ServerConfig) *http.Server {
 	d := &deps{
-		logger:     params.Logger,
-		env:        params.Env,
-		mux:        params.Mux,
-		awsClients: make(map[string]any),
-	}
-
-	for _, client := range cfg.AWSClients {
-		awsCfg := params.AWSConfig.Copy()
-		if client.Region != nil {
-			if r := client.Region.resolve(params.Env); r != "" {
-				awsCfg.Region = r
-			}
-		}
-		key := clientKey(client.TypeKey, client.Region, params.Env)
-		d.awsClients[key] = client.Factory(awsCfg)
+		logger: params.Logger,
 	}
 
 	params.Mux.Use(withDeps(d))
