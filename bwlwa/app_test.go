@@ -120,7 +120,7 @@ func (h *Handlers) GetItem(ctx context.Context, w bhttp.ResponseWriter, r *http.
 func setupTestEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv("AWS_LWA_PORT", "18081")
-	t.Setenv("SERVICE_NAME", "test-service")
+	t.Setenv("BW_SERVICE_NAME", "test-service")
 	t.Setenv("AWS_LWA_READINESS_CHECK_PATH", "/ready")
 	t.Setenv("MAIN_TABLE_NAME", "test-table")
 	t.Setenv("BUCKET_NAME", "test-bucket")
@@ -129,6 +129,7 @@ func setupTestEnv(t *testing.T) {
 	t.Setenv("AWS_ACCESS_KEY_ID", "test")
 	t.Setenv("AWS_SECRET_ACCESS_KEY", "test")
 	t.Setenv("AWS_REGION", "us-east-1")
+	t.Setenv("BW_PRIMARY_REGION", "us-east-1")
 }
 
 func TestApp_ContextFeatures(t *testing.T) {

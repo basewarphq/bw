@@ -24,9 +24,12 @@ type AppConfig struct {
 type Option func(*AppConfig)
 
 // WithAWSClient registers an AWS SDK v2 client factory.
-func WithAWSClient[T any](factory func(aws.Config) *T) Option {
+// By default, clients target the primary region (PRIMARY_REGION env var).
+// Use ForLocalRegion() to target the Lambda's local region instead.
+// Use ForRegion("eu-west-1") to target a specific region.
+func WithAWSClient[T any](factory func(aws.Config) *T, opts ...ClientOption) Option {
 	return func(c *AppConfig) {
-		c.AWSClients = append(c.AWSClients, RegisterAWSClient(factory))
+		c.AWSClients = append(c.AWSClients, RegisterAWSClient(factory, opts...))
 	}
 }
 

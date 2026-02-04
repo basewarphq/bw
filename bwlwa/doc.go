@@ -29,13 +29,17 @@
 //	| Variable                      | Required | Default | Description                                      |
 //	|-------------------------------|----------|---------|--------------------------------------------------|
 //	| AWS_LWA_PORT                  | Yes      | -       | Port the HTTP server listens on                  |
-//	| SERVICE_NAME                  | Yes      | -       | Service name for logging and tracing             |
 //	| AWS_LWA_READINESS_CHECK_PATH  | Yes      | -       | Health check endpoint path for LWA readiness     |
-//	| LOG_LEVEL                     | No       | info    | Log level (debug, info, warn, error)             |
-//	| OTEL_EXPORTER                 | No       | stdout  | Trace exporter: "stdout" or "xrayudp"            |
+//	| AWS_REGION                    | Yes      | -       | AWS region (set automatically by Lambda runtime) |
+//	| BW_SERVICE_NAME               | Yes      | -       | Service name for logging and tracing             |
+//	| BW_PRIMARY_REGION             | Yes      | -       | Primary deployment region (injected by CDK)      |
+//	| BW_LOG_LEVEL                  | No       | info    | Log level (debug, info, warn, error)             |
+//	| BW_OTEL_EXPORTER              | No       | stdout  | Trace exporter: "stdout" or "xrayudp"            |
 //
 // The AWS_LWA_* variables match the official Lambda Web Adapter configuration,
 // so values you set for LWA are automatically picked up by bwlwa.
+// AWS_REGION is set automatically by the Lambda runtime, while BW_PRIMARY_REGION
+// is injected by the bwcdklwalambda CDK construct.
 //
 // # Context Functions
 //
@@ -80,6 +84,31 @@
 //
 // Clients are automatically instrumented with OpenTelemetry and accessible
 // via [AWS] in handlers.
+//
+// # Cross-Region AWS Clients
+//
+// By default, AWS clients target the local region (AWS_REGION). For cross-region
+// operations, register clients for specific regions:
+//
+//	// Local region (default)
+//	bwlwa.WithAWSClient(dynamodb.NewFromConfig)
+//
+//	// Primary deployment region (uses PRIMARY_REGION env var)
+//	bwlwa.WithAWSClient(s3.NewFromConfig, bwlwa.ForPrimaryRegion())
+//
+//	// Fixed region
+//	bwlwa.WithAWSClient(sqs.NewFromConfig, bwlwa.ForRegion("us-east-1"))
+//
+// Retrieve clients in handlers with an optional region argument:
+//
+//	dynamo := bwlwa.AWS[dynamodb.Client](ctx)                          // local region
+//	s3Client := bwlwa.AWS[s3.Client](ctx, bwlwa.PrimaryRegion())       // primary region
+//	sqsClient := bwlwa.AWS[sqs.Client](ctx, bwlwa.FixedRegion("us-east-1"))
+//
+// Common use cases for cross-region clients:
+//   - Reading shared configuration from primary region DynamoDB/SSM
+//   - Publishing to centralized SQS queues or SNS topics
+//   - Accessing S3 buckets in specific regions
 //
 // # Health Checks
 //

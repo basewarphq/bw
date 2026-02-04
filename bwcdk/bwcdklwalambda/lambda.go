@@ -128,8 +128,9 @@ func New(scope constructs.Construct, props Props) Lambda {
 	}
 	env["AWS_LWA_PORT"] = jsii.String("8080")
 	env["AWS_LWA_READINESS_CHECK_PATH"] = jsii.String("/health")
-	env["SERVICE_NAME"] = jsii.String(functionName)
-	env["OTEL_EXPORTER"] = jsii.String("xrayudp")
+	env["BW_SERVICE_NAME"] = jsii.String(functionName)
+	env["BW_OTEL_EXPORTER"] = jsii.String("xrayudp")
+	env["BW_PRIMARY_REGION"] = jsii.String(bwcdkutil.PrimaryRegion(scope))
 	if props.PassThroughPath != nil {
 		env["AWS_LWA_PASS_THROUGH_PATH"] = props.PassThroughPath
 	}

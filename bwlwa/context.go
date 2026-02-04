@@ -142,9 +142,22 @@ func Env[E Environment](ctx context.Context) E {
 }
 
 // AWS retrieves a registered AWS client by type from context.
-func AWS[T any](ctx context.Context) *T {
+// By default, returns the client registered for the local region (AWS_REGION).
+// Pass an optional Region to retrieve clients registered for other regions:
+//
+//	dynamo := bwlwa.AWS[dynamodb.Client](ctx)                         // local region (default)
+//	s3Client := bwlwa.AWS[s3.Client](ctx, bwlwa.PrimaryRegion())      // primary region
+//	sqsClient := bwlwa.AWS[sqs.Client](ctx, bwlwa.FixedRegion("us-east-1"))
+func AWS[T any](ctx context.Context, region ...Region) *T {
 	d := depsFromContext(ctx)
-	key := typeKey[T]()
+	env := d.env.(Environment)
+
+	var r Region = LocalRegion()
+	if len(region) > 0 {
+		r = region[0]
+	}
+
+	key := clientKey(typeKey[T](), r, env)
 	client, ok := d.awsClients[key]
 	if !ok {
 		panic("bwlwa: AWS client " + key + " not found; use WithAWSClient()")

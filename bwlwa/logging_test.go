@@ -21,6 +21,8 @@ func (e testEnv) otelExporter() string {
 	}
 	return e.otelExp
 }
+func (e testEnv) awsRegion() string     { return "us-east-1" }
+func (e testEnv) primaryRegion() string { return "us-east-1" }
 
 func TestNewLogger(t *testing.T) {
 	tests := []struct {
@@ -81,9 +83,11 @@ func TestBaseEnvironment_LogLevel_Parsing(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("AWS_LWA_PORT", "8080")
-			t.Setenv("SERVICE_NAME", "test")
+			t.Setenv("BW_SERVICE_NAME", "test")
 			t.Setenv("AWS_LWA_READINESS_CHECK_PATH", "/health")
-			t.Setenv("LOG_LEVEL", tt.envValue)
+			t.Setenv("BW_LOG_LEVEL", tt.envValue)
+			t.Setenv("AWS_REGION", "us-east-1")
+			t.Setenv("BW_PRIMARY_REGION", "us-east-1")
 
 			parse := ParseEnv[BaseEnvironment]()
 			env, err := parse()
@@ -100,8 +104,10 @@ func TestBaseEnvironment_LogLevel_Parsing(t *testing.T) {
 
 func TestBaseEnvironment_LogLevel_Default(t *testing.T) {
 	t.Setenv("AWS_LWA_PORT", "8080")
-	t.Setenv("SERVICE_NAME", "test")
+	t.Setenv("BW_SERVICE_NAME", "test")
 	t.Setenv("AWS_LWA_READINESS_CHECK_PATH", "/health")
+	t.Setenv("AWS_REGION", "us-east-1")
+	t.Setenv("BW_PRIMARY_REGION", "us-east-1")
 
 	parse := ParseEnv[BaseEnvironment]()
 	env, err := parse()

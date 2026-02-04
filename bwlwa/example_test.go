@@ -8,6 +8,7 @@ import (
 	"github.com/advdv/bhttp"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/basewarphq/bwapp/bwlwa"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -83,18 +84,43 @@ func (h *ItemHandlers) CreateItem(ctx context.Context, w bhttp.ResponseWriter, r
 	})
 }
 
-// Example demonstrates a complete bwlwa application with three endpoints
-// showcasing Log, Env, Span, Reverse, AWS, and LWA context functions.
+// GetConfig fetches configuration from the primary region SSM Parameter Store.
+// Demonstrates: Cross-region AWS client access using PrimaryRegion().
+func (h *ItemHandlers) GetConfig(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
+	log := bwlwa.Log(ctx)
+
+	// Get SSM client for primary region - reads shared config across all regions.
+	ssmClient := bwlwa.AWS[ssm.Client](ctx, bwlwa.PrimaryRegion())
+
+	log.Info("fetching config from primary region SSM")
+
+	// Use the SSM client (simplified example).
+	_ = ssmClient
+
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(map[string]string{
+		"config": "value-from-primary-region",
+	})
+}
+
+// Example demonstrates a complete bwlwa application with four endpoints
+// showcasing Log, Env, Span, Reverse, AWS, LWA, and cross-region client access.
 func Example() {
 	bwlwa.NewApp[Env](
 		func(m *bwlwa.Mux, h *ItemHandlers) {
 			m.HandleFunc("GET /items", h.ListItems)
 			m.HandleFunc("GET /items/{id}", h.GetItem, "get-item")
 			m.HandleFunc("POST /items", h.CreateItem)
+			m.HandleFunc("GET /config", h.GetConfig)
 		},
+		// DynamoDB client for local region (default).
 		bwlwa.WithAWSClient(func(cfg aws.Config) *dynamodb.Client {
 			return dynamodb.NewFromConfig(cfg)
 		}),
+		// SSM client for primary region - reads shared config across all deployments.
+		bwlwa.WithAWSClient(func(cfg aws.Config) *ssm.Client {
+			return ssm.NewFromConfig(cfg)
+		}, bwlwa.ForPrimaryRegion()),
 		bwlwa.WithFx(fx.Provide(NewItemHandlers)),
 	).Run()
 }

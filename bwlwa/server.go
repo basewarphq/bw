@@ -41,7 +41,14 @@ func NewServer(params ServerParams, cfg ServerConfig) *http.Server {
 	}
 
 	for _, client := range cfg.AWSClients {
-		d.awsClients[client.TypeKey] = client.Factory(params.AWSConfig)
+		awsCfg := params.AWSConfig.Copy()
+		if client.Region != nil {
+			if r := client.Region.resolve(params.Env); r != "" {
+				awsCfg.Region = r
+			}
+		}
+		key := clientKey(client.TypeKey, client.Region, params.Env)
+		d.awsClients[key] = client.Factory(awsCfg)
 	}
 
 	params.Mux.Use(withDeps(d))

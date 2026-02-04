@@ -15,16 +15,20 @@ type Environment interface {
 	readinessCheckPath() string
 	logLevel() zapcore.Level
 	otelExporter() string
+	awsRegion() string
+	primaryRegion() string
 }
 
 // BaseEnvironment contains the required LWA environment variables.
 // Embed this in your custom environment struct.
 type BaseEnvironment struct {
 	Port               int           `env:"AWS_LWA_PORT,required"`
-	ServiceName        string        `env:"SERVICE_NAME,required"`
+	ServiceName        string        `env:"BW_SERVICE_NAME,required"`
 	ReadinessCheckPath string        `env:"AWS_LWA_READINESS_CHECK_PATH,required"`
-	LogLevel           zapcore.Level `env:"LOG_LEVEL" envDefault:"info"`
-	OtelExporter       string        `env:"OTEL_EXPORTER" envDefault:"stdout"`
+	LogLevel           zapcore.Level `env:"BW_LOG_LEVEL" envDefault:"info"`
+	OtelExporter       string        `env:"BW_OTEL_EXPORTER" envDefault:"stdout"`
+	AWSRegion          string        `env:"AWS_REGION,required"`
+	PrimaryRegion      string        `env:"BW_PRIMARY_REGION,required"`
 }
 
 func (e BaseEnvironment) port() int {
@@ -41,6 +45,12 @@ func (e BaseEnvironment) logLevel() zapcore.Level {
 }
 func (e BaseEnvironment) otelExporter() string {
 	return e.OtelExporter
+}
+func (e BaseEnvironment) awsRegion() string {
+	return e.AWSRegion
+}
+func (e BaseEnvironment) primaryRegion() string {
+	return e.PrimaryRegion
 }
 
 var _ Environment = BaseEnvironment{}
