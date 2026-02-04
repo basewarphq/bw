@@ -4,129 +4,115 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
-	"os"
 	"strings"
 
+	"github.com/advdv/bhttp"
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/basewarphq/bwapp/bwwebdev"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/propagation"
+	"github.com/basewarphq/bwapp/bwlwa"
+	"go.uber.org/zap"
 )
 
-var dynamoClient *dynamodb.Client
+type Env struct {
+	bwlwa.BaseEnvironment
+	MainTableName string `env:"MAIN_TABLE_NAME"`
+}
 
 func main() {
-	ctx := context.Background()
-
-	if err := bwwebdev.InitTracing(ctx); err != nil {
-		log.Printf("failed to initialize tracing: %v", err)
-	}
-	defer func() {
-		if err := bwwebdev.ShutdownTracing(ctx); err != nil {
-			log.Printf("failed to shutdown tracing: %v", err)
-		}
-	}()
-
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		log.Fatalf("failed to load AWS config: %v", err)
-	}
-	otelaws.AppendMiddlewares(&cfg.APIOptions)
-	dynamoClient = dynamodb.NewFromConfig(cfg)
-
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("/health", handleHealth)
-	mux.HandleFunc("/l/authorize", handleAuthorize)
-	mux.HandleFunc("/g/", handleGateway)
-	mux.HandleFunc("/", handleCatchAll)
-
-	handler := otelhttp.NewHandler(mux, "coreback",
-		otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
-			return r.Method + " " + r.URL.Path
+	bwlwa.NewApp[Env](
+		routing,
+		bwlwa.WithAWSClient(func(cfg aws.Config) *dynamodb.Client {
+			return dynamodb.NewFromConfig(cfg)
 		}),
-		otelhttp.WithFilter(func(r *http.Request) bool {
-			// Don't trace LWA readiness checks - they create orphan traces.
-			return r.URL.Path != "/health"
-		}),
-	)
-	http.ListenAndServe(":"+os.Getenv("PORT"), handler)
+	).Run()
 }
 
-func handleCatchAll(w http.ResponseWriter, r *http.Request) {
+func routing(m *bwlwa.Mux) {
+	m.HandleFunc("POST /l/authorize", handleAuthorize)
+	m.HandleFunc("GET /g/{path...}", handleGateway)
+	m.HandleFunc("/{path...}", handleCatchAll)
+}
+
+func handleCatchAll(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
 	body, _ := io.ReadAll(r.Body)
-	log.Printf("[catch-all] method=%s path=%s", r.Method, r.URL.Path)
-	log.Printf("[catch-all] headers=%v", r.Header)
-	log.Printf("[catch-all] body=%s", string(body))
+	log := bwlwa.Log(ctx)
+	log.Info("catch-all",
+		zap.String("method", r.Method),
+		zap.String("path", r.URL.Path),
+		zap.Any("headers", r.Header),
+		zap.String("body", string(body)),
+	)
 	w.WriteHeader(http.StatusNotFound)
-	w.Write([]byte("not found: " + r.URL.Path))
+	_, err := w.Write([]byte("not found: " + r.URL.Path))
+	return err
 }
 
-func handleHealth(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-}
+func handleGateway(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
+	log := bwlwa.Log(ctx)
+	env := bwlwa.Env[Env](ctx)
+	dynamoClient := bwlwa.AWS[dynamodb.Client](ctx)
 
-func handleGateway(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	bwwebdev.LogPrintf(ctx, "[gateway] method=%s path=%s", r.Method, r.URL.Path)
-	bwwebdev.LogPrintf(ctx, "[gateway] headers=%v", r.Header)
+	log.Info("gateway",
+		zap.String("method", r.Method),
+		zap.String("path", r.URL.Path),
+		zap.Any("headers", r.Header),
+	)
+
 	path := strings.TrimPrefix(r.URL.Path, "/g")
 
-	tableName := os.Getenv("MAIN_TABLE_NAME")
-	if tableName != "" {
+	if env.MainTableName != "" {
 		var limit int32 = 1
 		out, err := dynamoClient.Scan(ctx, &dynamodb.ScanInput{
-			TableName: &tableName,
+			TableName: &env.MainTableName,
 			Limit:     &limit,
 		})
 		if err != nil {
-			bwwebdev.LogErrorf(ctx, "[gateway] dynamodb error: %v", err)
+			log.Error("dynamodb error", zap.Error(err))
 		} else {
-			bwwebdev.LogPrintf(ctx, "[gateway] table %s has %d items", tableName, out.Count)
+			log.Info("table scan",
+				zap.String("table", env.MainTableName),
+				zap.Int32("count", out.Count),
+			)
 		}
 	}
 
-	w.Write([]byte("hello, world: " + path))
+	_, err := w.Write([]byte("hello, world: " + path))
+	return err
 }
 
-func handleAuthorize(w http.ResponseWriter, r *http.Request) {
-	// Extract trace context from Lambda runtime environment.
-	// LWA pass-through doesn't propagate trace headers, so we extract from env var.
-	ctx := r.Context()
-	if traceID := os.Getenv("_X_AMZN_TRACE_ID"); traceID != "" {
-		carrier := propagation.HeaderCarrier{"X-Amzn-Trace-Id": []string{traceID}}
-		ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
-	}
+func handleAuthorize(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
+	log := bwlwa.Log(ctx)
+	span := bwlwa.Span(ctx)
 
-	tracer := otel.Tracer("coreback")
-	ctx, span := tracer.Start(ctx, "authorize")
-	defer span.End()
+	span.AddEvent("authorize-start")
 
-	bwwebdev.LogPrintf(ctx, "[authorize] method=%s path=%s", r.Method, r.URL.Path)
+	log.Info("authorize",
+		zap.String("method", r.Method),
+		zap.String("path", r.URL.Path),
+	)
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		bwwebdev.LogErrorf(ctx, "[authorize] error reading body: %v", err)
+		log.Error("error reading body", zap.Error(err))
 		http.Error(w, "error reading body", http.StatusBadRequest)
-		return
+		return nil
 	}
-	bwwebdev.LogPrintf(ctx, "[authorize] body=%s", string(body))
+	log.Debug("authorize body", zap.String("body", string(body)))
 
 	// LWA pass-through POSTs the raw TOKEN authorizer event as the request body.
-	// TOKEN events only contain: type, authorizationToken, methodArn
 	var req events.APIGatewayCustomAuthorizerRequest
 	if err := json.Unmarshal(body, &req); err != nil {
-		bwwebdev.LogErrorf(ctx, "[authorize] error decoding JSON: %v", err)
+		log.Error("error decoding JSON", zap.Error(err))
 		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
+		return nil
 	}
-	bwwebdev.LogPrintf(ctx, "[authorize] parsed request: type=%s methodArn=%s token=%s", req.Type, req.MethodArn, req.AuthorizationToken)
+	log.Info("parsed request",
+		zap.String("type", req.Type),
+		zap.String("methodArn", req.MethodArn),
+		zap.String("token", req.AuthorizationToken),
+	)
 
 	// TODO: Validate the authorization token
 	_ = req.AuthorizationToken
@@ -147,6 +133,7 @@ func handleAuthorize(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	respBytes, _ := json.Marshal(resp)
-	bwwebdev.LogPrintf(ctx, "[authorize] response=%s", string(respBytes))
-	w.Write(respBytes)
+	log.Debug("authorize response", zap.String("response", string(respBytes)))
+	_, err = w.Write(respBytes)
+	return err
 }

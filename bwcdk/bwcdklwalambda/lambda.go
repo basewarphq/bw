@@ -52,7 +52,6 @@ type Props struct {
 	// Use this for Lambda authorizers and other non-HTTP triggers like SQS/SNS.
 	// Optional.
 	PassThroughPath *string
-
 }
 
 // parsePassThroughPath validates PassThroughPath and returns a suffix for construct naming.
@@ -121,12 +120,16 @@ func New(scope constructs.Construct, props Props) Lambda {
 
 	region := *awscdk.Stack_Of(scope).Region()
 
+	functionName := bwcdkutil.ResourceName(scope, scopeName, bwcdkutil.CasingKebab)
+
 	env := make(map[string]*string)
 	if props.Environment != nil {
 		maps.Copy(env, *props.Environment)
 	}
-	env["PORT"] = jsii.String("8080")
+	env["AWS_LWA_PORT"] = jsii.String("8080")
 	env["AWS_LWA_READINESS_CHECK_PATH"] = jsii.String("/health")
+	env["SERVICE_NAME"] = jsii.String(functionName)
+	env["OTEL_EXPORTER"] = jsii.String("xrayudp")
 	if props.PassThroughPath != nil {
 		env["AWS_LWA_PASS_THROUGH_PATH"] = props.PassThroughPath
 	}
@@ -139,8 +142,6 @@ func New(scope constructs.Construct, props Props) Lambda {
 		"arn:aws:lambda:%s:753240598075:layer:LambdaAdapterLayerArm64:%d",
 		region, LWALayerVersion,
 	)
-
-	functionName := bwcdkutil.ResourceName(scope, scopeName, bwcdkutil.CasingKebab)
 
 	con.function = awscdklambdagoalpha.NewGoFunction(scope, jsii.String("Function"),
 		&awscdklambdagoalpha.GoFunctionProps{
@@ -157,7 +158,8 @@ func New(scope constructs.Construct, props Props) Lambda {
 				awslambda.LayerVersion_FromLayerVersionArn(scope,
 					jsii.String("LWALayer"), jsii.String(lwaLayerArn)),
 			},
-			LogGroup: con.logGroup,
+			LogGroup:      con.logGroup,
+			LoggingFormat: awslambda.LoggingFormat_JSON,
 		})
 
 	return con
