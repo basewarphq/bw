@@ -1,55 +1,54 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/advdv/bhttp"
+	"github.com/advdv/bhttp/blwa"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/basewarphq/bwapp/bwlwa"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
 type Env struct {
-	bwlwa.BaseEnvironment
+	blwa.BaseEnvironment
 	MainTableName  string `env:"MAIN_TABLE_NAME"`
 	MainSecretName string `env:"MAIN_SECRET_NAME"`
 }
 
 func main() {
-	bwlwa.NewApp[Env](
+	blwa.NewApp[Env](
 		routing,
-		bwlwa.WithAWSClient(func(cfg aws.Config) *dynamodb.Client {
+		blwa.WithAWSClient(func(cfg aws.Config) *dynamodb.Client {
 			return dynamodb.NewFromConfig(cfg)
 		}),
-		bwlwa.WithFx(fx.Provide(NewHandlers)),
+		blwa.WithFx(fx.Provide(NewHandlers)),
 	).Run()
 }
 
 type Handlers struct {
-	rt     *bwlwa.Runtime[Env]
+	rt     *blwa.Runtime[Env]
 	dynamo *dynamodb.Client
 }
 
-func NewHandlers(rt *bwlwa.Runtime[Env], dynamo *dynamodb.Client) *Handlers {
+func NewHandlers(rt *blwa.Runtime[Env], dynamo *dynamodb.Client) *Handlers {
 	return &Handlers{rt: rt, dynamo: dynamo}
 }
 
-func routing(m *bwlwa.Mux, h *Handlers) {
+func routing(m *blwa.Mux, h *Handlers) {
 	m.HandleFunc("POST /l/authorize", h.handleAuthorize)
 	m.HandleFunc("GET /g/{path...}", h.handleGateway)
 	m.HandleFunc("/{path...}", handleCatchAll)
 }
 
-func handleCatchAll(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
+func handleCatchAll(ctx *blwa.Context, w bhttp.ResponseWriter, r *http.Request) error {
 	body, _ := io.ReadAll(r.Body)
-	log := bwlwa.Log(ctx)
+	log := ctx.Log()
 	log.Info("catch-all",
 		zap.String("method", r.Method),
 		zap.String("path", r.URL.Path),
@@ -61,8 +60,8 @@ func handleCatchAll(ctx context.Context, w bhttp.ResponseWriter, r *http.Request
 	return err
 }
 
-func (h *Handlers) handleGateway(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
-	log := bwlwa.Log(ctx)
+func (h *Handlers) handleGateway(ctx *blwa.Context, w bhttp.ResponseWriter, r *http.Request) error {
+	log := ctx.Log()
 	env := h.rt.Env()
 
 	log.Info("gateway",
@@ -103,9 +102,9 @@ func (h *Handlers) handleGateway(ctx context.Context, w bhttp.ResponseWriter, r 
 	return err
 }
 
-func (h *Handlers) handleAuthorize(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
-	log := bwlwa.Log(ctx)
-	span := bwlwa.Span(ctx)
+func (h *Handlers) handleAuthorize(ctx *blwa.Context, w bhttp.ResponseWriter, r *http.Request) error {
+	log := ctx.Log()
+	span := ctx.Span()
 
 	span.AddEvent("authorize-start")
 

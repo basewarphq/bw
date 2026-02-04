@@ -1,28 +1,27 @@
 package main
 
 import (
-	"context"
 	"net/http"
 	"strings"
 
 	"github.com/advdv/bhttp"
-	"github.com/basewarphq/bwapp/bwlwa"
+	"github.com/advdv/bhttp/blwa"
 )
 
 type Env struct {
-	bwlwa.BaseEnvironment
+	blwa.BaseEnvironment
 }
 
 func main() {
-	bwlwa.NewApp[Env](routing).Run()
+	blwa.NewApp[Env](routing).Run()
 }
 
-func routing(m *bwlwa.Mux) {
+func routing(m *blwa.Mux) {
 	m.HandleFunc("GET /", handleRoot)
 	m.HandleFunc("GET /c/{path...}", handleConsole)
 }
 
-func handleRoot(_ context.Context, w bhttp.ResponseWriter, _ *http.Request) error {
+func handleRoot(_ *blwa.Context, w bhttp.ResponseWriter, _ *http.Request) error {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, err := w.Write([]byte(`<!DOCTYPE html>
 <html>
@@ -35,9 +34,9 @@ func handleRoot(_ context.Context, w bhttp.ResponseWriter, _ *http.Request) erro
 	return err
 }
 
-func handleConsole(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
+func handleConsole(ctx *blwa.Context, w bhttp.ResponseWriter, r *http.Request) error {
 	path := strings.TrimPrefix(r.URL.Path, "/c")
-	bwlwa.Log(ctx).Info("console request", )
+	ctx.Log().Info("console request")
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, err := w.Write([]byte("<!DOCTYPE html><html><head><title>Console</title></head><body><h1>Console</h1><p>Path: " + path + "</p></body></html>"))
