@@ -193,6 +193,54 @@ func Example_fixedRegion() {
 	).Run()
 }
 
+// SecretHandlers demonstrates secret retrieval from AWS Secrets Manager.
+type SecretHandlers struct {
+	rt *bwlwa.Runtime[Env]
+}
+
+func NewSecretHandlers(rt *bwlwa.Runtime[Env]) *SecretHandlers {
+	return &SecretHandlers{rt: rt}
+}
+
+// Connect demonstrates retrieving secrets from AWS Secrets Manager.
+// Demonstrates: Runtime.Secret for raw string secrets and JSON path extraction.
+func (h *SecretHandlers) Connect(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
+	log := bwlwa.Log(ctx)
+
+	// Raw string secret - returns the entire secret value
+	apiKey, err := h.rt.Secret(ctx, "my-api-key-secret")
+	if err != nil {
+		return err
+	}
+
+	// JSON secret with nested path extraction - parses JSON and extracts value at path
+	// e.g., secret contains: {"database": {"host": "...", "password": "secret123"}}
+	dbPassword, err := h.rt.Secret(ctx, "my-db-credentials", "database.password")
+	if err != nil {
+		return err
+	}
+
+	log.Info("retrieved secrets",
+		zap.Int("api_key_len", len(apiKey)),
+		zap.Int("password_len", len(dbPassword)))
+
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(map[string]string{
+		"status": "connected",
+	})
+}
+
+// Example_secrets demonstrates retrieving secrets from AWS Secrets Manager.
+// Use Runtime.Secret to fetch raw string secrets or extract values from JSON secrets.
+func Example_secrets() {
+	bwlwa.NewApp[Env](
+		func(m *bwlwa.Mux, h *SecretHandlers) {
+			m.HandleFunc("POST /connect", h.Connect)
+		},
+		bwlwa.WithFx(fx.Provide(NewSecretHandlers)),
+	).Run()
+}
+
 // MultiRegionHandlers demonstrates all three region types in one handler.
 type MultiHandlers struct {
 	rt     *bwlwa.Runtime[Env]

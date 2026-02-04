@@ -139,6 +139,7 @@ func setupTestEnv(t *testing.T) {
 	t.Setenv("AWS_ACCESS_KEY_ID", "test")
 	t.Setenv("AWS_SECRET_ACCESS_KEY", "test")
 	t.Setenv("AWS_REGION", "us-east-1")
+	t.Setenv("MAIN_SECRET", "test-secret")
 	t.Setenv("BW_PRIMARY_REGION", "eu-west-1")
 }
 

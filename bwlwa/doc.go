@@ -50,6 +50,7 @@
 // Runtime provides:
 //   - [Runtime.Env] returns the typed environment configuration
 //   - [Runtime.Reverse] generates URLs for named routes
+//   - [Runtime.Secret] retrieves secrets from AWS Secrets Manager
 //
 // Example handler struct with Runtime:
 //
@@ -68,6 +69,18 @@
 //	    h.dynamo.GetItem(ctx, ...)             // direct client access
 //	    // ...
 //	}
+//
+// # Secrets
+//
+// [Runtime.Secret] retrieves secrets from AWS Secrets Manager with caching.
+// Secrets are fetched per-request to support rotation without redeployment.
+//
+//	// Raw string secret
+//	apiKey, err := h.rt.Secret(ctx, "my-api-key-secret")
+//
+//	// JSON secret with nested path extraction (uses gjson syntax)
+//	// e.g., secret contains: {"database": {"host": "...", "password": "secret123"}}
+//	password, err := h.rt.Secret(ctx, "my-db-credentials", "database.password")
 //
 // # Context Functions
 //

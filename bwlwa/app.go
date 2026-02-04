@@ -23,6 +23,15 @@ type AppConfig struct {
 // Option configures the App.
 type Option func(*AppConfig)
 
+// runtimeProviderParams holds dependencies for Runtime.
+type runtimeProviderParams[E Environment] struct {
+	fx.In
+
+	Env          E
+	Mux          *Mux
+	SecretReader SecretReader
+}
+
 // WithAWSClient registers an AWS SDK v2 client for dependency injection.
 // Clients are injected directly into handler constructors via fx.
 //
@@ -94,10 +103,13 @@ func NewApp[E Environment](routing any, opts ...Option) *App {
 		fx.Provide(NewTracerProvider),
 		fx.Provide(NewPropagator),
 		fx.Provide(provideAWSConfig),
+		fx.Provide(func(cfg aws.Config) (SecretReader, error) {
+			return NewAWSSecretReader(cfg)
+		}),
 		fx.Supply(cfg.ServerConfig),
 		fx.Provide(NewServer),
-		fx.Provide(func(e E, m *Mux) *Runtime[E] {
-			return NewRuntime(e, m)
+		fx.Provide(func(p runtimeProviderParams[E]) *Runtime[E] {
+			return NewRuntime(p.Env, p.Mux, RuntimeParams{SecretReader: p.SecretReader})
 		}),
 		fx.Invoke(startServerHook),
 		fx.Invoke(routing),

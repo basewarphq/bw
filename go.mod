@@ -12,14 +12,17 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.7
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.54.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.96.0
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.34.19
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.21
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.67.8
+	github.com/aws/aws-secretsmanager-caching-go/v2 v2.1.1
 	github.com/aws/constructs-go/constructs/v10 v10.4.5
 	github.com/aws/jsii-runtime-go v1.126.0
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/cockroachdb/errors v1.12.0
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/iancoleman/strcase v0.3.0
+	github.com/tidwall/gjson v1.18.0
 	go.opentelemetry.io/contrib/detectors/aws/lambda v0.60.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.65.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0
@@ -77,6 +80,8 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/samber/lo v1.48.0 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/yuin/goldmark v1.7.13 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.35.0 // indirect
