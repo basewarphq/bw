@@ -4,3 +4,6 @@ aws-cli = { version = "latest", symlink_bins = "true" }
 go = "latest"
 node = "22"
 "npm:aws-cdk" = "latest"
+golangci-lint = "latest"
+shellcheck = "latest"
+shfmt = "latest"

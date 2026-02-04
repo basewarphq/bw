@@ -9,19 +9,19 @@ cd infra/cdk/cdk
 # Map region identifiers back to AWS region codes
 region_for_ident() {
 	case "$1" in
-		Euc1) echo "eu-central-1" ;;
-		Euc2) echo "eu-central-2" ;;
-		Euw1) echo "eu-west-1" ;;
-		Euw2) echo "eu-west-2" ;;
-		Euw3) echo "eu-west-3" ;;
-		Eun1) echo "eu-north-1" ;;
-		Eus1) echo "eu-south-1" ;;
-		Eus2) echo "eu-south-2" ;;
-		Use1) echo "us-east-1" ;;
-		Use2) echo "us-east-2" ;;
-		Usw1) echo "us-west-1" ;;
-		Usw2) echo "us-west-2" ;;
-		*) echo "" ;;
+	Euc1) echo "eu-central-1" ;;
+	Euc2) echo "eu-central-2" ;;
+	Euw1) echo "eu-west-1" ;;
+	Euw2) echo "eu-west-2" ;;
+	Euw3) echo "eu-west-3" ;;
+	Eun1) echo "eu-north-1" ;;
+	Eus1) echo "eu-south-1" ;;
+	Eus2) echo "eu-south-2" ;;
+	Use1) echo "us-east-1" ;;
+	Use2) echo "us-east-2" ;;
+	Usw1) echo "us-west-1" ;;
+	Usw2) echo "us-west-2" ;;
+	*) echo "" ;;
 	esac
 }
 

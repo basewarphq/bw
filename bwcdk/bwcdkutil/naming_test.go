@@ -73,9 +73,9 @@ func TestResourceName_DeploymentStack(t *testing.T) {
 			app := awscdk.NewApp(nil)
 
 			cfg := &bwcdkutil.Config{
-				Qualifier:     "testqual",
-				PrimaryRegion: "us-east-1",
-				Deployments:   []string{"Stag", "Prod"},
+				Qualifier:      "testqual",
+				PrimaryRegion:  "us-east-1",
+				Deployments:    []string{"Stag", "Prod"},
 				BaseDomainName: "example.com",
 			}
 			bwcdkutil.StoreConfig(app, cfg)

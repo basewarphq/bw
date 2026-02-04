@@ -76,7 +76,7 @@ func New(scope constructs.Construct, props Props) Dynamo {
 			SortKey:       &awsdynamodb.Attribute{Name: jsii.String("sk"), Type: awsdynamodb.AttributeType_STRING},
 			Billing:       awsdynamodb.Billing_OnDemand(nil),
 			RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
-			Replicas: &replicas,
+			Replicas:      &replicas,
 			PointInTimeRecoverySpecification: &awsdynamodb.PointInTimeRecoverySpecification{
 				PointInTimeRecoveryEnabled: jsii.Bool(true),
 			},

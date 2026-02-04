@@ -299,8 +299,8 @@ func TestRouteConfig_RequireAuthDefaults(t *testing.T) {
 	gateway := bwcdkrestgateway.New(stack, bwcdkrestgateway.Props{
 		Entry: jsii.String(testEntry),
 		GatewayRoutes: &[]*bwcdkrestgateway.RouteConfig{
-			{Path: jsii.String("/public")},                         // nil RequireAuth -> no auth
-			{Path: jsii.String("/also-public"), RequireAuth: nil},  // explicit nil -> no auth
+			{Path: jsii.String("/public")},                        // nil RequireAuth -> no auth
+			{Path: jsii.String("/also-public"), RequireAuth: nil}, // explicit nil -> no auth
 			{Path: jsii.String("/protected"), RequireAuth: jsii.Bool(true)},
 			{Path: jsii.String("/open"), RequireAuth: jsii.Bool(false)},
 		},

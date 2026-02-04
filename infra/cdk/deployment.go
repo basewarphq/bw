@@ -33,8 +33,8 @@ func NewDeployment(stack awscdk.Stack, deploymentIdent string) {
 		Subdomain:   jsii.String("api"),
 		Authorizer:  &bwcdkrestgateway.AuthorizerProps{},
 		Environment: &map[string]*string{
-			"MAIN_TABLE_NAME":   dynamo.Table().TableName(),
-			"MAIN_SECRET_NAME":  mainSecret.SecretName(),
+			"MAIN_TABLE_NAME":  dynamo.Table().TableName(),
+			"MAIN_SECRET_NAME": mainSecret.SecretName(),
 		},
 	})
 	dynamo.GrantReadWriteData(gateway.Lambda().Function())
