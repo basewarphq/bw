@@ -6,7 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/fx"
@@ -50,7 +52,7 @@ func TestNewResource(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("stdout resource has service name", func(t *testing.T) {
-		res, err := newResource(ctx, "stdout", "my-service")
+		res, err := newResource(ctx, "stdout", "my-service", "")
 		if err != nil {
 			t.Fatalf("newResource error: %v", err)
 		}
@@ -71,12 +73,120 @@ func TestNewResource(t *testing.T) {
 	})
 
 	t.Run("empty exporter type uses stdout resource", func(t *testing.T) {
-		res, err := newResource(ctx, "", "test-service")
+		res, err := newResource(ctx, "", "test-service", "")
 		if err != nil {
 			t.Fatalf("newResource error: %v", err)
 		}
 		if res == nil {
 			t.Fatal("expected non-nil resource")
+		}
+	})
+
+	t.Run("stdout resource ignores gateway log group", func(t *testing.T) {
+		res, err := newResource(ctx, "stdout", "my-service", "my-log-group")
+		if err != nil {
+			t.Fatalf("newResource error: %v", err)
+		}
+		// For stdout, gateway log group is ignored (only used with xrayudp).
+		// Just verify resource is created without error.
+		if res == nil {
+			t.Fatal("expected non-nil resource")
+		}
+	})
+}
+
+func TestWithAdditionalLogGroups(t *testing.T) {
+	ctx := context.Background()
+
+	baseRes, err := resource.New(ctx,
+		resource.WithAttributes(
+			attribute.String("service.name", "test-service"),
+		),
+	)
+	if err != nil {
+		t.Fatalf("failed to create base resource: %v", err)
+	}
+
+	t.Run("no log groups returns base resource", func(t *testing.T) {
+		res, err := withAdditionalLogGroups(ctx, baseRes)
+		if err != nil {
+			t.Fatalf("withAdditionalLogGroups error: %v", err)
+		}
+		if res != baseRes {
+			t.Error("expected same resource when no log groups provided")
+		}
+	})
+
+	t.Run("empty string log group is filtered", func(t *testing.T) {
+		res, err := withAdditionalLogGroups(ctx, baseRes, "", "")
+		if err != nil {
+			t.Fatalf("withAdditionalLogGroups error: %v", err)
+		}
+		if res != baseRes {
+			t.Error("expected same resource when only empty log groups provided")
+		}
+	})
+
+	t.Run("single log group is added", func(t *testing.T) {
+		res, err := withAdditionalLogGroups(ctx, baseRes, "my-log-group")
+		if err != nil {
+			t.Fatalf("withAdditionalLogGroups error: %v", err)
+		}
+
+		found := false
+		for _, attr := range res.Attributes() {
+			if string(attr.Key) == "aws.log.group.names" {
+				vals := attr.Value.AsStringSlice()
+				if len(vals) == 1 && vals[0] == "my-log-group" {
+					found = true
+				}
+				break
+			}
+		}
+		if !found {
+			t.Error("expected aws.log.group.names attribute with my-log-group")
+		}
+	})
+
+	t.Run("multiple log groups are added", func(t *testing.T) {
+		res, err := withAdditionalLogGroups(ctx, baseRes, "log-group-1", "log-group-2")
+		if err != nil {
+			t.Fatalf("withAdditionalLogGroups error: %v", err)
+		}
+
+		found := false
+		for _, attr := range res.Attributes() {
+			if string(attr.Key) == "aws.log.group.names" {
+				vals := attr.Value.AsStringSlice()
+				if len(vals) == 2 && vals[0] == "log-group-1" && vals[1] == "log-group-2" {
+					found = true
+				}
+				break
+			}
+		}
+		if !found {
+			t.Error("expected aws.log.group.names attribute with both log groups")
+		}
+	})
+
+	t.Run("empty log groups are filtered from mix", func(t *testing.T) {
+		res, err := withAdditionalLogGroups(ctx, baseRes, "", "valid-group", "")
+		if err != nil {
+			t.Fatalf("withAdditionalLogGroups error: %v", err)
+		}
+
+		found := false
+		for _, attr := range res.Attributes() {
+			if string(attr.Key) == "aws.log.group.names" {
+				vals := attr.Value.AsStringSlice()
+				if len(vals) == 1 && vals[0] == "valid-group" {
+					found = true
+				}
+				break
+			}
+		}
+		if !found {
+			t.Error("expected aws.log.group.names attribute with only valid-group")
 		}
 	})
 }

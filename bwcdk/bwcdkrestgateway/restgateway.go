@@ -120,28 +120,37 @@ func New(scope constructs.Construct, props Props) RestGateway {
 	scope = constructs.NewConstruct(scope, jsii.String(strcase.ToCamel(*props.Subdomain)+"RGw"))
 	con := &restGateway{}
 
+	deploymentIdent := bwcdkutil.DeploymentIdent(scope)
+	accessLogID := strcase.ToCamel(*props.Subdomain) + "AccessLogs"
+	con.accessLogGroup = bwcdkloggroup.New(scope, accessLogID, bwcdkloggroup.Props{
+		Purpose: jsii.String("API Gateway access logs"),
+	}).LogGroup()
+
+	// Pass the access log group name to Lambda for X-Ray log correlation.
+	lambdaEnv := make(map[string]*string)
+	if props.Environment != nil {
+		for k, v := range *props.Environment {
+			lambdaEnv[k] = v
+		}
+	}
+	lambdaEnv["BW_GATEWAY_ACCESS_LOG_GROUP"] = con.accessLogGroup.LogGroupName()
+
 	con.lambda = bwcdklwalambda.New(scope, bwcdklwalambda.Props{
 		Entry:       props.Entry,
-		Environment: props.Environment,
+		Environment: &lambdaEnv,
 	})
 
 	if props.Authorizer != nil {
 		con.authorizerLambda = bwcdklwalambda.New(scope, bwcdklwalambda.Props{
 			Entry:       props.Entry,
-			Environment: props.Environment,
+			Environment: &lambdaEnv,
 			// TOKEN authorizer events don't share HTTP-like fields, so LWA
 			// correctly routes them via AWS_LWA_PASS_THROUGH_PATH.
 			PassThroughPath: jsii.String("/l/authorize"),
 		})
 	}
 
-	deploymentIdent := bwcdkutil.DeploymentIdent(scope)
 	apiName := bwcdkutil.ResourceName(scope, con.lambda.Name()+"Gateway", bwcdkutil.CasingCamel)
-
-	accessLogID := con.lambda.Name() + strcase.ToCamel(*props.Subdomain) + "AccessLogs"
-	con.accessLogGroup = bwcdkloggroup.New(scope, accessLogID, bwcdkloggroup.Props{
-		Purpose: jsii.String("API Gateway access logs"),
-	}).LogGroup()
 
 	stack := awscdk.Stack_Of(scope)
 	region := *stack.Region()
@@ -172,18 +181,11 @@ func New(scope constructs.Construct, props Props) RestGateway {
 			StageName:            jsii.String("prod"),
 			TracingEnabled:       jsii.Bool(true),
 			AccessLogDestination: awsapigateway.NewLogGroupLogDestination(con.accessLogGroup),
-			AccessLogFormat: awsapigateway.AccessLogFormat_JsonWithStandardFields(
-				&awsapigateway.JsonWithStandardFieldProps{
-					Caller:         jsii.Bool(true),
-					HttpMethod:     jsii.Bool(true),
-					Ip:             jsii.Bool(true),
-					Protocol:       jsii.Bool(true),
-					RequestTime:    jsii.Bool(true),
-					ResourcePath:   jsii.Bool(true),
-					ResponseLength: jsii.Bool(true),
-					Status:         jsii.Bool(true),
-					User:           jsii.Bool(true),
-				}),
+			// Custom format to include xrayTraceId for log-to-trace correlation.
+			// JsonWithStandardFields doesn't support xrayTraceId.
+			AccessLogFormat: awsapigateway.AccessLogFormat_Custom(jsii.String(
+				`{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","caller":"$context.identity.caller","user":"$context.identity.user","requestTime":"$context.requestTime","httpMethod":"$context.httpMethod","resourcePath":"$context.resourcePath","status":"$context.status","protocol":"$context.protocol","responseLength":"$context.responseLength","xrayTraceId":"$context.xrayTraceId","integrationLatency":"$context.integration.latency","integrationStatus":"$context.integration.status"}`,
+			)),
 		},
 	})
 

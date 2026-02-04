@@ -10,12 +10,13 @@ import (
 	"go.opentelemetry.io/contrib/detectors/aws/lambda"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/contrib/propagators/aws/xray"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/fx"
 )
 
@@ -35,7 +36,7 @@ func NewTracerProvider(lc fx.Lifecycle, env Environment) (trace.TracerProvider, 
 		return nil, err
 	}
 
-	res, err := newResource(ctx, exporterType, env.serviceName())
+	res, err := newResource(ctx, exporterType, env.serviceName(), env.gatewayAccessLogGroup())
 	if err != nil {
 		return nil, err
 	}
@@ -85,17 +86,46 @@ func newExporter(ctx context.Context, exporterType string) (sdktrace.SpanExporte
 }
 
 // newResource creates a resource with appropriate attributes for the exporter.
-func newResource(ctx context.Context, exporterType, serviceName string) (*resource.Resource, error) {
+// If gatewayAccessLogGroup is set, it's added to aws.log.group.names for X-Ray log correlation.
+func newResource(ctx context.Context, exporterType, serviceName, gatewayAccessLogGroup string) (*resource.Resource, error) {
 	if exporterType == "xrayudp" {
 		// Use Lambda resource detector for production Lambda environment.
 		lambdaDetector := lambda.NewResourceDetector()
-		return lambdaDetector.Detect(ctx)
+		lambdaRes, err := lambdaDetector.Detect(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return withAdditionalLogGroups(ctx, lambdaRes, gatewayAccessLogGroup)
 	}
 	// Use service name for local development.
 	return resource.NewWithAttributes(
 		semconv.SchemaURL,
 		semconv.ServiceName(serviceName),
 	), nil
+}
+
+// withAdditionalLogGroups merges additional CloudWatch log groups into the resource
+// for X-Ray log correlation. Empty log group names are filtered out.
+func withAdditionalLogGroups(ctx context.Context, base *resource.Resource, logGroups ...string) (*resource.Resource, error) {
+	var filtered []string
+	for _, lg := range logGroups {
+		if lg != "" {
+			filtered = append(filtered, lg)
+		}
+	}
+	if len(filtered) == 0 {
+		return base, nil
+	}
+
+	customRes, err := resource.New(ctx,
+		resource.WithAttributes(
+			attribute.StringSlice("aws.log.group.names", filtered),
+		),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return resource.Merge(base, customRes)
 }
 
 // withTracing wraps the handler with otelhttp for automatic span creation.

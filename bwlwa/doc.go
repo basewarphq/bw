@@ -26,15 +26,16 @@
 //
 // BaseEnvironment provides the following environment variables:
 //
-//	| Variable                      | Required | Default | Description                                      |
-//	|-------------------------------|----------|---------|--------------------------------------------------|
-//	| AWS_LWA_PORT                  | Yes      | -       | Port the HTTP server listens on                  |
-//	| AWS_LWA_READINESS_CHECK_PATH  | Yes      | -       | Health check endpoint path for LWA readiness     |
-//	| AWS_REGION                    | Yes      | -       | AWS region (set automatically by Lambda runtime) |
-//	| BW_SERVICE_NAME               | Yes      | -       | Service name for logging and tracing             |
-//	| BW_PRIMARY_REGION             | Yes      | -       | Primary deployment region (injected by CDK)      |
-//	| BW_LOG_LEVEL                  | No       | info    | Log level (debug, info, warn, error)             |
-//	| BW_OTEL_EXPORTER              | No       | stdout  | Trace exporter: "stdout" or "xrayudp"            |
+//	| Variable                      | Required | Default | Description                                          |
+//	|-------------------------------|----------|---------|------------------------------------------------------|
+//	| AWS_LWA_PORT                  | Yes      | -       | Port the HTTP server listens on                      |
+//	| AWS_LWA_READINESS_CHECK_PATH  | Yes      | -       | Health check endpoint path for LWA readiness         |
+//	| AWS_REGION                    | Yes      | -       | AWS region (set automatically by Lambda runtime)     |
+//	| BW_SERVICE_NAME               | Yes      | -       | Service name for logging and tracing                 |
+//	| BW_PRIMARY_REGION             | Yes      | -       | Primary deployment region (injected by CDK)          |
+//	| BW_LOG_LEVEL                  | No       | info    | Log level (debug, info, warn, error)                 |
+//	| BW_OTEL_EXPORTER              | No       | stdout  | Trace exporter: "stdout" or "xrayudp"                |
+//	| BW_GATEWAY_ACCESS_LOG_GROUP   | No       | -       | API Gateway access log group for X-Ray correlation   |
 //
 // The AWS_LWA_* variables match the official Lambda Web Adapter configuration,
 // so values you set for LWA are automatically picked up by bwlwa.
@@ -103,13 +104,18 @@
 //
 // # Tracing
 //
-// OpenTelemetry tracing is configured automatically based on OTEL_EXPORTER:
+// OpenTelemetry tracing is configured automatically based on BW_OTEL_EXPORTER:
 //
 //   - "stdout" (default): Pretty-printed spans for local development
 //   - "xrayudp": X-Ray UDP exporter for Lambda with proper trace ID format
 //
 // The tracer provider and propagator are injected explicitly (no globals),
 // allowing for proper testing and isolation.
+//
+// When BW_GATEWAY_ACCESS_LOG_GROUP is set (injected automatically by
+// bwcdkrestgateway), the log group is added to trace segments via the
+// aws.log.group.names resource attribute. This enables X-Ray's "View Logs"
+// feature to query API Gateway access logs alongside Lambda function logs.
 //
 // # AWS Clients
 //
