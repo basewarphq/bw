@@ -3,7 +3,7 @@ module github.com/basewarphq/bwapp
 go 1.25.6
 
 require (
-	github.com/advdv/bhttp v0.6.0
+	github.com/advdv/bhttp v0.6.4
 	github.com/aws-observability/aws-otel-go/exporters/xrayudp v1.0.0
 	github.com/aws/aws-cdk-go/awscdk/v2 v2.236.0
 	github.com/aws/aws-cdk-go/awscdklambdagoalpha/v2 v2.236.0-alpha.0
@@ -27,6 +27,7 @@ require (
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
+	github.com/MawKKe/integer-interval-expressions-go v0.1.3 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.32.7 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.7 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.17 // indirect

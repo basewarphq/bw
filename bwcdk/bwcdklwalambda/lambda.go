@@ -27,6 +27,9 @@ import (
 // LWALayerVersion is the current version of the Lambda Web Adapter layer.
 const LWALayerVersion = 25
 
+// DefaultTimeout is the default Lambda function timeout in seconds.
+const DefaultTimeout = 30
+
 // Lambda provides access to a Go Lambda function with AWS Lambda Web Adapter.
 type Lambda interface {
 	// Function returns the underlying Lambda function.
@@ -53,6 +56,18 @@ type Props struct {
 	// Use this for Lambda authorizers and other non-HTTP triggers like SQS/SNS.
 	// Optional.
 	PassThroughPath *string
+	// Timeout is the Lambda function timeout in seconds.
+	// If nil, defaults to DefaultTimeout (30 seconds).
+	// Optional.
+	Timeout *float64
+}
+
+// resolveTimeout returns the timeout value, using DefaultTimeout if nil.
+func resolveTimeout(timeout *float64) float64 {
+	if timeout == nil {
+		return DefaultTimeout
+	}
+	return *timeout
 }
 
 // parsePassThroughPath validates PassThroughPath and returns a suffix for construct naming.
@@ -122,6 +137,7 @@ func New(scope constructs.Construct, props Props) Lambda {
 	region := *awscdk.Stack_Of(scope).Region()
 
 	functionName := bwcdkutil.ResourceName(scope, scopeName, bwcdkutil.CasingKebab)
+	timeout := resolveTimeout(props.Timeout)
 
 	env := make(map[string]*string)
 	if props.Environment != nil {
@@ -129,9 +145,11 @@ func New(scope constructs.Construct, props Props) Lambda {
 	}
 	env["AWS_LWA_PORT"] = jsii.String("8080")
 	env["AWS_LWA_READINESS_CHECK_PATH"] = jsii.String("/health")
+	env["AWS_LWA_ERROR_STATUS_CODES"] = jsii.String("500-599")
 	env["BW_SERVICE_NAME"] = jsii.String(functionName)
 	env["BW_OTEL_EXPORTER"] = jsii.String("xrayudp")
 	env["BW_PRIMARY_REGION"] = jsii.String(bwcdkutil.PrimaryRegion(scope))
+	env["BW_LAMBDA_TIMEOUT"] = jsii.String(fmt.Sprintf("%.0fs", timeout))
 	if props.PassThroughPath != nil {
 		env["AWS_LWA_PASS_THROUGH_PATH"] = props.PassThroughPath
 	}
@@ -152,7 +170,7 @@ func New(scope constructs.Construct, props Props) Lambda {
 			Architecture: awslambda.Architecture_ARM_64(),
 			Runtime:      awslambda.Runtime_PROVIDED_AL2023(),
 			MemorySize:   jsii.Number(128),
-			Timeout:      awscdk.Duration_Seconds(jsii.Number(30)),
+			Timeout:      awscdk.Duration_Seconds(jsii.Number(timeout)),
 			Environment:  &env,
 			Bundling:     bwcdkutil.ReproducibleGoBundling(),
 			Tracing:      awslambda.Tracing_ACTIVE,

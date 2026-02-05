@@ -4,6 +4,36 @@ import (
 	"testing"
 )
 
+func TestResolveTimeout(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil returns default", func(t *testing.T) {
+		t.Parallel()
+		got := resolveTimeout(nil)
+		if got != DefaultTimeout {
+			t.Errorf("resolveTimeout(nil) = %v, want %v", got, DefaultTimeout)
+		}
+	})
+
+	t.Run("explicit value is used", func(t *testing.T) {
+		t.Parallel()
+		val := 60.0
+		got := resolveTimeout(&val)
+		if got != 60 {
+			t.Errorf("resolveTimeout(&60) = %v, want 60", got)
+		}
+	})
+
+	t.Run("zero is valid", func(t *testing.T) {
+		t.Parallel()
+		val := 0.0
+		got := resolveTimeout(&val)
+		if got != 0 {
+			t.Errorf("resolveTimeout(&0) = %v, want 0", got)
+		}
+	})
+}
+
 func TestParsePassThroughPath(t *testing.T) {
 	t.Parallel()
 
