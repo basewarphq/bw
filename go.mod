@@ -3,7 +3,7 @@ module github.com/basewarphq/bwapp
 go 1.25.6
 
 require (
-	github.com/advdv/bhttp v0.4.0
+	github.com/advdv/bhttp v0.6.0
 	github.com/aws-observability/aws-otel-go/exporters/xrayudp v1.0.0
 	github.com/aws/aws-cdk-go/awscdk/v2 v2.236.0
 	github.com/aws/aws-cdk-go/awscdklambdagoalpha/v2 v2.236.0-alpha.0

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -46,9 +47,9 @@ func routing(m *blwa.Mux, h *Handlers) {
 	m.HandleFunc("/{path...}", handleCatchAll)
 }
 
-func handleCatchAll(ctx *blwa.Context, w bhttp.ResponseWriter, r *http.Request) error {
+func handleCatchAll(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
 	body, _ := io.ReadAll(r.Body)
-	log := ctx.Log()
+	log := blwa.Log(ctx)
 	log.Info("catch-all",
 		zap.String("method", r.Method),
 		zap.String("path", r.URL.Path),
@@ -60,8 +61,8 @@ func handleCatchAll(ctx *blwa.Context, w bhttp.ResponseWriter, r *http.Request) 
 	return err
 }
 
-func (h *Handlers) handleGateway(ctx *blwa.Context, w bhttp.ResponseWriter, r *http.Request) error {
-	log := ctx.Log()
+func (h *Handlers) handleGateway(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
+	log := blwa.Log(ctx)
 	env := h.rt.Env()
 
 	log.Info("gateway",
@@ -102,9 +103,9 @@ func (h *Handlers) handleGateway(ctx *blwa.Context, w bhttp.ResponseWriter, r *h
 	return err
 }
 
-func (h *Handlers) handleAuthorize(ctx *blwa.Context, w bhttp.ResponseWriter, r *http.Request) error {
-	log := ctx.Log()
-	span := ctx.Span()
+func (h *Handlers) handleAuthorize(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
+	log := blwa.Log(ctx)
+	span := blwa.Span(ctx)
 
 	span.AddEvent("authorize-start")
 

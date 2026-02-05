@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -21,7 +22,7 @@ func routing(m *blwa.Mux) {
 	m.HandleFunc("GET /c/{path...}", handleConsole)
 }
 
-func handleRoot(_ *blwa.Context, w bhttp.ResponseWriter, _ *http.Request) error {
+func handleRoot(_ context.Context, w bhttp.ResponseWriter, _ *http.Request) error {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, err := w.Write([]byte(`<!DOCTYPE html>
 <html>
@@ -34,9 +35,9 @@ func handleRoot(_ *blwa.Context, w bhttp.ResponseWriter, _ *http.Request) error 
 	return err
 }
 
-func handleConsole(ctx *blwa.Context, w bhttp.ResponseWriter, r *http.Request) error {
+func handleConsole(ctx context.Context, w bhttp.ResponseWriter, r *http.Request) error {
 	path := strings.TrimPrefix(r.URL.Path, "/c")
-	ctx.Log().Info("console request")
+	blwa.Log(ctx).Info("console request")
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, err := w.Write([]byte(
