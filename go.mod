@@ -3,7 +3,7 @@ module github.com/basewarphq/bwapp
 go 1.25.6
 
 require (
-	github.com/advdv/bhttp v0.6.4
+	github.com/advdv/bhttp v0.7.1
 	github.com/aws-observability/aws-otel-go/exporters/xrayudp v1.0.0
 	github.com/aws/aws-cdk-go/awscdk/v2 v2.236.0
 	github.com/aws/aws-cdk-go/awscdklambdagoalpha/v2 v2.236.0-alpha.0
@@ -47,6 +47,7 @@ require (
 	github.com/aws/aws-secretsmanager-caching-go/v2 v2.1.1 // indirect
 	github.com/aws/smithy-go v1.24.0 // indirect
 	github.com/caarlos0/env/v11 v11.3.1 // indirect
+	github.com/carlmjohnson/requests v0.25.1 // indirect
 	github.com/cdklabs/awscdk-asset-awscli-go/awscliv1/v2 v2.2.263 // indirect
 	github.com/cdklabs/awscdk-asset-node-proxy-agent-go/nodeproxyagentv6/v2 v2.1.0 // indirect
 	github.com/cdklabs/cloud-assembly-schema-go/awscdkcloudassemblyschema/v48 v48.20.0 // indirect
