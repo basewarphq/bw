@@ -19,8 +19,10 @@ require (
 )
 
 require (
+	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/MawKKe/integer-interval-expressions-go v0.1.3 // indirect
+	github.com/alecthomas/kong v1.14.0 // indirect
 	github.com/aws-observability/aws-otel-go/exporters/xrayudp v1.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.32.7 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.7 // indirect

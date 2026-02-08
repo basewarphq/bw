@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Run all Go tests"
-set -euo pipefail
-
-go test ./...

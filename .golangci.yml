@@ -93,6 +93,12 @@ linters:
           - paralleltest
         path: testing/e2e/
       - linters:
+          - paralleltest
+        path: bwcdk/
+      - linters:
+          - tagliatelle
+        path: cmd/internal/cfnread/
+      - linters:
           - dupl
           - err113
           - errcheck

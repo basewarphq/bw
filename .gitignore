@@ -34,3 +34,4 @@ go.work.sum
 # sometimes it compiles
 /coreconsole
 /coreback
+/bwapp

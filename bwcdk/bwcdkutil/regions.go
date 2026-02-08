@@ -1,6 +1,7 @@
 package bwcdkutil
 
 import (
+	"regexp"
 	"slices"
 	"strings"
 )
@@ -51,6 +52,35 @@ var RegionIdents = map[string]string{
 
 	"cn-north-1":     "Cnn1",
 	"cn-northwest-1": "Cnw1",
+}
+
+var regionForIdent map[string]string
+
+func init() {
+	regionForIdent = make(map[string]string, len(RegionIdents))
+	for region, ident := range RegionIdents {
+		regionForIdent[ident] = region
+	}
+}
+
+var regionIdentRe = regexp.MustCompile(`^bwapp([A-Z][a-z]+[0-9])`)
+
+// RegionForIdent returns the AWS region code for a 4-character identifier.
+// Returns the region and true if found, or empty string and false if unknown.
+func RegionForIdent(ident string) (string, bool) {
+	region, ok := regionForIdent[ident]
+	return region, ok
+}
+
+// ExtractRegionIdent extracts the 4-character region identifier from a CDK stack name.
+// Stack names follow the pattern "bwapp{Ident}..." (e.g., "bwappEuw1Stag" → "Euw1").
+// Returns empty string if the pattern does not match.
+func ExtractRegionIdent(stackName string) string {
+	m := regionIdentRe.FindStringSubmatch(stackName)
+	if len(m) < 2 {
+		return ""
+	}
+	return m[1]
 }
 
 // RegionIdentFor returns the 4-character identifier for an AWS region.

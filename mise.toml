@@ -7,3 +7,6 @@ node = "22"
 golangci-lint = "latest"
 shellcheck = "latest"
 shfmt = "latest"
+
+[shell_alias]
+bwapp = "go run ./cmd/bwapp"

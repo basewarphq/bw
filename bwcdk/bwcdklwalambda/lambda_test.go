@@ -1,4 +1,3 @@
-//nolint:paralleltest // jsii runtime doesn't support parallel tests
 package bwcdklwalambda_test
 
 import (

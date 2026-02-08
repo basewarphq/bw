@@ -4,6 +4,11 @@
       "tool": "Bash",
       "matches": { "cmd": "*mise r *" },
       "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": { "cmd": "*bwapp *" },
+      "action": "allow"
     }
   ]
 }

@@ -1,4 +1,3 @@
-//nolint:paralleltest // this test doesn't need parallel execution
 package bwcdkutil
 
 import (
