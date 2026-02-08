@@ -7,6 +7,8 @@
 package bwcdkdynamo
 
 import (
+	"strings"
+
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsdynamodb"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
@@ -64,7 +66,8 @@ func New(scope constructs.Construct, props Props) Dynamo {
 
 	region := *awscdk.Stack_Of(scope).Region()
 	tableName := bwcdkutil.ResourceName(scope, identifier+"-table", bwcdkutil.CasingKebab)
-	paramName := identifier + "/table-name"
+	deploymentIdent := strings.ToLower(bwcdkutil.DeploymentIdent(scope))
+	paramName := deploymentIdent + "/" + identifier + "/table-name"
 
 	if bwcdkutil.IsPrimaryRegion(scope, region) {
 		cfg := bwcdkutil.ConfigFromScope(scope)
@@ -114,7 +117,8 @@ func LookupDynamo(scope constructs.Construct, identifier *string) awsdynamodb.IT
 		ident = *identifier
 	}
 
-	paramName := ident + "/table-name"
+	deploymentIdent := strings.ToLower(bwcdkutil.DeploymentIdent(scope))
+	paramName := deploymentIdent + "/" + ident + "/table-name"
 	tableName := bwcdkparams.LookupLocal(scope, paramsNamespace, paramName)
 
 	lookupID := "LookupDynamo"

@@ -42,17 +42,23 @@ func Store(scope constructs.Construct, id string, namespace string, name string,
 // Use this in secondary regions to access values created in the primary region.
 // The physicalID should be a stable identifier for the custom resource (e.g., "user-pool-id-lookup").
 func Lookup(scope constructs.Construct, id string, namespace string, name string, physicalID string) *string {
+	sdkCall := &customresources.AwsSdkCall{
+		Service: jsii.String("SSM"),
+		Action:  jsii.String("getParameter"),
+		Parameters: map[string]any{
+			"Name": ParameterName(scope, namespace, name),
+		},
+		Region:             jsii.String(bwcdkutil.PrimaryRegion(scope)),
+		PhysicalResourceId: customresources.PhysicalResourceId_Of(jsii.String(physicalID)),
+	}
+	// OnUpdate is required so that changes to the parameter path (e.g., when
+	// scoping parameters per deployment) trigger a new SSM GetParameter call.
+	// Without it, CloudFormation skips the SDK call on update and the response
+	// is empty, causing "doesn't contain Parameter.Value" errors.
 	lookup := customresources.NewAwsCustomResource(scope, jsii.String(id),
 		&customresources.AwsCustomResourceProps{
-			OnCreate: &customresources.AwsSdkCall{
-				Service: jsii.String("SSM"),
-				Action:  jsii.String("getParameter"),
-				Parameters: map[string]any{
-					"Name": ParameterName(scope, namespace, name),
-				},
-				Region:             jsii.String(bwcdkutil.PrimaryRegion(scope)),
-				PhysicalResourceId: customresources.PhysicalResourceId_Of(jsii.String(physicalID)),
-			},
+			OnCreate: sdkCall,
+			OnUpdate: sdkCall,
 			Policy: customresources.AwsCustomResourcePolicy_FromSdkCalls(&customresources.SdkCallsPolicyOptions{
 				Resources: customresources.AwsCustomResourcePolicy_ANY_RESOURCE(),
 			}),

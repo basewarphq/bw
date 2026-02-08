@@ -14,12 +14,22 @@ import (
 )
 
 type OnePasswordSyncCmd struct {
-	Deployment string `arg:"" required:"" help:"Deployment name (e.g., Stag, Prod)."`
+	Deployment string `arg:"" optional:"" help:"Deployment name (e.g., Stag, Prod). Defaults to claimed dev slot."`
 }
 
 func (c *OnePasswordSyncCmd) Run(cfg *projcfg.Config) error {
-	cdkDir := cfg.CdkDir()
 	ctx := context.Background()
+
+	deployment := c.Deployment
+	if deployment == "" {
+		claim, err := ensureClaim(ctx, cfg)
+		if err != nil {
+			return err
+		}
+		deployment = claim.Slot
+	}
+
+	cdkDir := cfg.CdkDir()
 
 	out, err := cmdexec.Output(ctx, cdkDir, "cdk", "list")
 	if err != nil {
@@ -36,7 +46,7 @@ func (c *OnePasswordSyncCmd) Run(cfg *projcfg.Config) error {
 		if sharedStack == "" && strings.HasSuffix(stack, "Shared") {
 			sharedStack = stack
 		}
-		if deploymentStack == "" && strings.HasSuffix(stack, c.Deployment) {
+		if deploymentStack == "" && strings.HasSuffix(stack, deployment) {
 			deploymentStack = stack
 		}
 	}
@@ -45,7 +55,7 @@ func (c *OnePasswordSyncCmd) Run(cfg *projcfg.Config) error {
 		return errors.New("no shared stack found")
 	}
 	if deploymentStack == "" {
-		return errors.Newf("no deployment stack found for %s", c.Deployment)
+		return errors.Newf("no deployment stack found for %s", deployment)
 	}
 
 	ident := bwcdkutil.ExtractRegionIdent(sharedStack)
@@ -72,7 +82,7 @@ func (c *OnePasswordSyncCmd) Run(cfg *projcfg.Config) error {
 	roleARN := outputContaining(deployOutputs, "OnePasswordSyncRoleARN")
 	secretName := outputContaining(deployOutputs, "OnePasswordSyncSecretName")
 
-	fmt.Fprintf(os.Stdout, "=== 1Password Sync Configuration for %s ===\n", c.Deployment)
+	fmt.Fprintf(os.Stdout, "=== 1Password Sync Configuration for %s ===\n", deployment)
 	fmt.Fprintln(os.Stdout)
 	fmt.Fprintln(os.Stdout, "Copy these values into 1Password:")
 	fmt.Fprintln(os.Stdout, "  Developer > View Environments > [env] > Destinations > Configure AWS")

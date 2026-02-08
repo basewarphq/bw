@@ -8,9 +8,20 @@ import (
 )
 
 type DiffCmd struct {
-	Deployment string `arg:"" required:"" help:"Deployment name (e.g., Staging, Prod)."`
+	Deployment string `arg:"" optional:"" help:"Deployment name (e.g., Stag, Prod). Defaults to claimed dev slot."`
 }
 
 func (c *DiffCmd) Run(cfg *projcfg.Config) error {
-	return cmdexec.Run(context.Background(), cfg.CdkDir(), "cdk", "diff", "bwapp*"+c.Deployment)
+	ctx := context.Background()
+
+	deployment := c.Deployment
+	if deployment == "" {
+		claim, err := ensureClaim(ctx, cfg)
+		if err != nil {
+			return err
+		}
+		deployment = claim.Slot
+	}
+
+	return cmdexec.Run(ctx, cfg.CdkDir(), "cdk", "diff", "bwapp*"+deployment)
 }

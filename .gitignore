@@ -31,6 +31,9 @@ go.work.sum
 # .idea/
 # .vscode/
 
+# Dev slot claim
+bwapp.claim
+
 # sometimes it compiles
 /coreconsole
 /coreback

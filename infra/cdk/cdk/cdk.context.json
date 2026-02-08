@@ -6,7 +6,19 @@
   "bwapp-base-domain-name": "basewarp.app",
   "bwapp-deployments": [
     "Prod",
-    "Stag"
+    "Stag",
+    "Dev01",
+    "Dev02",
+    "Dev03",
+    "Dev04",
+    "Dev05",
+    "Dev06",
+    "Dev07",
+    "Dev08",
+    "Dev09",
+    "Dev10",
+    "Dev11",
+    "Dev12"
   ],
   "bwapp-dns-delegated": true,
   "bwapp-primary-region": "eu-central-1",

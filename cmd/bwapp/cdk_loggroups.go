@@ -12,12 +12,22 @@ import (
 )
 
 type LogGroupsCmd struct {
-	Deployment string `arg:"" required:"" help:"Deployment name (e.g., Staging, Prod)."`
+	Deployment string `arg:"" optional:"" help:"Deployment name (e.g., Staging, Prod). Defaults to claimed dev slot."`
 }
 
 func (c *LogGroupsCmd) Run(cfg *projcfg.Config) error {
-	cdkDir := cfg.CdkDir()
 	ctx := context.Background()
+
+	deployment := c.Deployment
+	if deployment == "" {
+		claim, err := ensureClaim(ctx, cfg)
+		if err != nil {
+			return err
+		}
+		deployment = claim.Slot
+	}
+
+	cdkDir := cfg.CdkDir()
 
 	out, err := cmdexec.Output(ctx, cdkDir, "cdk", "list")
 	if err != nil {
@@ -26,7 +36,7 @@ func (c *LogGroupsCmd) Run(cfg *projcfg.Config) error {
 
 	for line := range strings.SplitSeq(out, "\n") {
 		stack := strings.TrimSpace(line)
-		if stack == "" || !strings.HasSuffix(stack, c.Deployment) {
+		if stack == "" || !strings.HasSuffix(stack, deployment) {
 			continue
 		}
 

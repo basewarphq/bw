@@ -15,7 +15,8 @@ type App struct {
 		Deploy          DeployCmd          `cmd:"" help:"Deploy CDK stacks for a deployment."`
 		Diff            DiffCmd            `cmd:"" help:"Show CDK diff for a deployment."`
 		Endpoints       EndpointsCmd       `cmd:"" help:"Show all gateway endpoints for a deployment."`
-		LogGroups       LogGroupsCmd       `cmd:"" name:"loggroups" help:"Show all CloudWatch log groups for a deployment."`
+		LogGroups       LogGroupsCmd       `cmd:"" name:"log-groups" help:"Show all CloudWatch log groups for a deployment."`
+		Slots           SlotsCmd           `cmd:"" help:"Manage dev deployment slots."`
 	} `cmd:"" help:"CDK commands."`
 	Check struct {
 		Lint     LintCmd     `cmd:"" help:"Run golangci-lint and shellcheck."`

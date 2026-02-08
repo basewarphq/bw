@@ -8,15 +8,26 @@ import (
 )
 
 type DeployCmd struct {
-	Deployment string `arg:"" required:"" help:"Deployment name (e.g., Staging, Prod)."`
+	Deployment string `arg:"" optional:"" help:"Deployment name (e.g., Stag, Prod). Defaults to claimed dev slot."`
 	Hotswap    bool   `help:"Enable CDK hotswap deployment for faster iterations."`
 }
 
 func (c *DeployCmd) Run(cfg *projcfg.Config) error {
+	ctx := context.Background()
+
+	deployment := c.Deployment
+	if deployment == "" {
+		claim, err := ensureClaim(ctx, cfg)
+		if err != nil {
+			return err
+		}
+		deployment = claim.Slot
+	}
+
 	args := []string{"deploy", "--require-approval", "never"}
 	if c.Hotswap {
 		args = append(args, "--hotswap")
 	}
-	args = append(args, "bwapp*"+c.Deployment)
-	return cmdexec.Run(context.Background(), cfg.CdkDir(), "cdk", args...)
+	args = append(args, "bwapp*"+deployment)
+	return cmdexec.Run(ctx, cfg.CdkDir(), "cdk", args...)
 }

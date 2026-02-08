@@ -245,6 +245,18 @@ Parameters follow the pattern: `/{qualifier}/{namespace}/{name}`
 
 Use `bwcdkparams.ParameterName()` to generate consistent paths.
 
+### Per-Deployment Parameter Scoping
+
+Constructs used in deployment stacks must include the deployment identifier in their SSM parameter `name` to prevent collisions across deployments (e.g., Prod vs Dev01). Scope at the **call site** in the construct, not in `bwcdkparams.ParameterName()` — that function is also used by shared stacks where no deployment identifier exists.
+
+```go
+deploymentIdent := strings.ToLower(bwcdkutil.DeploymentIdent(scope))
+paramName := deploymentIdent + "/" + identifier + "/table-name"
+bwcdkparams.Store(scope, "TableNameParam", paramsNamespace, paramName, jsii.String(tableName))
+```
+
+This produces paths like `/{qualifier}/{namespace}/{deployment}/{identifier}/table-name`, while shared-stack parameters remain at `/{qualifier}/{namespace}/{name}`.
+
 ## Resource Reconstruction
 
 When looking up resources, reconstruct them using `FromXxx()` methods:
