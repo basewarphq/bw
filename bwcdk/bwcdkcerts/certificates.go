@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
-	agcdkparams "github.com/basewarphq/bwapp/bwcdk/bwcdkparams"
+	"github.com/basewarphq/bwapp/bwcdk/bwcdkparams"
 )
 
 const paramsNamespace = "certs"
@@ -52,7 +52,7 @@ func New(scope constructs.Construct, props Props) Certificates {
 			Validation: awscertificatemanager.CertificateValidation_FromDns(props.HostedZone),
 		})
 
-	agcdkparams.Store(scope, "CertificateArnParam", paramsNamespace, "wildcard-cert-arn",
+	bwcdkparams.Store(scope, "CertificateArnParam", paramsNamespace, "wildcard-cert-arn",
 		con.certificate.CertificateArn())
 
 	return con
@@ -61,7 +61,7 @@ func New(scope constructs.Construct, props Props) Certificates {
 // LookupCertificate retrieves the wildcard certificate from SSM Parameter Store.
 // Use this to get a certificate reference without creating cross-stack dependencies.
 func LookupCertificate(scope constructs.Construct) awscertificatemanager.ICertificate {
-	certArn := agcdkparams.LookupLocal(scope, paramsNamespace, "wildcard-cert-arn")
+	certArn := bwcdkparams.LookupLocal(scope, paramsNamespace, "wildcard-cert-arn")
 	return awscertificatemanager.Certificate_FromCertificateArn(scope,
 		jsii.String("LookupWildcardCertificate"), certArn)
 }

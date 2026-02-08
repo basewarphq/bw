@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
-	agcdkparams "github.com/basewarphq/bwapp/bwcdk/bwcdkparams"
+	"github.com/basewarphq/bwapp/bwcdk/bwcdkparams"
 	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
 )
 
@@ -22,7 +22,7 @@ func LookupHostedZone(scope constructs.Construct, zoneName *string) awsroute53.I
 	if zoneName == nil {
 		zoneName = bwcdkutil.BaseDomainNamePtr(scope)
 	}
-	hostedZoneID := agcdkparams.LookupLocal(scope, paramsNamespace, "hosted-zone-id")
+	hostedZoneID := bwcdkparams.LookupLocal(scope, paramsNamespace, "hosted-zone-id")
 	return awsroute53.HostedZone_FromHostedZoneAttributes(scope, jsii.String("LookupHostedZone"),
 		&awsroute53.HostedZoneAttributes{
 			HostedZoneId: hostedZoneID,
@@ -80,7 +80,7 @@ func New(scope constructs.Construct, props Props) DNS {
 			})
 		con.hostedZone = hostedZone
 
-		agcdkparams.Store(scope, "HostedZoneIDParam", paramsNamespace, "hosted-zone-id",
+		bwcdkparams.Store(scope, "HostedZoneIDParam", paramsNamespace, "hosted-zone-id",
 			hostedZone.HostedZoneId())
 
 		awscdk.NewCfnOutput(awscdk.Stack_Of(scope), jsii.String(NameServersOutputKey), &awscdk.CfnOutputProps{
@@ -88,11 +88,11 @@ func New(scope constructs.Construct, props Props) DNS {
 			Description: jsii.String("Comma-separated list of NS records for DNS delegation"),
 		})
 	} else {
-		hostedZoneID := agcdkparams.Lookup(scope, "LookupHostedZoneID",
+		hostedZoneID := bwcdkparams.Lookup(scope, "LookupHostedZoneID",
 			paramsNamespace, "hosted-zone-id", "hosted-zone-id-lookup")
 
 		// Store locally so deployment stacks in this region can use LookupLocal.
-		agcdkparams.Store(scope, "HostedZoneIDParam", paramsNamespace, "hosted-zone-id",
+		bwcdkparams.Store(scope, "HostedZoneIDParam", paramsNamespace, "hosted-zone-id",
 			hostedZoneID)
 
 		con.hostedZone = awsroute53.HostedZone_FromHostedZoneAttributes(scope, jsii.String("HostedZone"),

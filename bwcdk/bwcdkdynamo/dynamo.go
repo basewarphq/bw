@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
-	agcdkparams "github.com/basewarphq/bwapp/bwcdk/bwcdkparams"
+	"github.com/basewarphq/bwapp/bwcdk/bwcdkparams"
 	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
 )
 
@@ -95,9 +95,9 @@ func New(scope constructs.Construct, props Props) Dynamo {
 		})
 		con.table = table
 
-		agcdkparams.Store(scope, "TableNameParam", paramsNamespace, paramName, jsii.String(tableName))
+		bwcdkparams.Store(scope, "TableNameParam", paramsNamespace, paramName, jsii.String(tableName))
 	} else {
-		tableNameLookup := agcdkparams.Lookup(scope, "LookupTableName",
+		tableNameLookup := bwcdkparams.Lookup(scope, "LookupTableName",
 			paramsNamespace, paramName, identifier+"-table-name-lookup")
 
 		con.table = awsdynamodb.TableV2_FromTableName(scope, jsii.String("Table"), tableNameLookup)
@@ -115,7 +115,7 @@ func LookupDynamo(scope constructs.Construct, identifier *string) awsdynamodb.IT
 	}
 
 	paramName := ident + "/table-name"
-	tableName := agcdkparams.LookupLocal(scope, paramsNamespace, paramName)
+	tableName := bwcdkparams.LookupLocal(scope, paramsNamespace, paramName)
 
 	lookupID := "LookupDynamo"
 	if identifier != nil && *identifier != "" {

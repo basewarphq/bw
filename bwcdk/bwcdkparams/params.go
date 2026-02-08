@@ -1,10 +1,10 @@
-// Package agcdkparams provides utilities for storing and retrieving CDK construct
+// Package bwcdkparams provides utilities for storing and retrieving CDK construct
 // values across AWS regions using AWS Systems Manager Parameter Store.
 //
 // This package enables cross-region resource sharing in multi-region CDK deployments:
 //   - Primary region: Creates resources and stores identifiers in SSM Parameter Store
 //   - Secondary regions: Retrieves stored values to reference existing resources
-package agcdkparams
+package bwcdkparams
 
 import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsssm"

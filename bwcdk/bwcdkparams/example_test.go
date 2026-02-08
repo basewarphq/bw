@@ -1,11 +1,11 @@
-package agcdkparams_test
+package bwcdkparams_test
 
 import (
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscognito"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53"
 	"github.com/aws/jsii-runtime-go"
-	agcdkparams "github.com/basewarphq/bwapp/bwcdk/bwcdkparams"
+	"github.com/basewarphq/bwapp/bwcdk/bwcdkparams"
 	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
 )
 
@@ -43,10 +43,10 @@ func Example_dnsConstruct() {
 				ZoneName: jsii.String("example.com"),
 			})
 
-		agcdkparams.Store(stack, "HostedZoneIDParam", namespace, "hosted-zone-id", zone.HostedZoneId())
-		agcdkparams.Store(stack, "HostedZoneArnParam", namespace, "hosted-zone-arn", zone.HostedZoneArn())
+		bwcdkparams.Store(stack, "HostedZoneIDParam", namespace, "hosted-zone-id", zone.HostedZoneId())
+		bwcdkparams.Store(stack, "HostedZoneArnParam", namespace, "hosted-zone-arn", zone.HostedZoneArn())
 	} else {
-		hostedZoneID := agcdkparams.Lookup(stack, "LookupHostedZoneID", namespace, "hosted-zone-id", "hosted-zone-id-lookup")
+		hostedZoneID := bwcdkparams.Lookup(stack, "LookupHostedZoneID", namespace, "hosted-zone-id", "hosted-zone-id-lookup")
 		_ = awsroute53.HostedZone_FromHostedZoneAttributes(stack, jsii.String("HostedZone"),
 			&awsroute53.HostedZoneAttributes{
 				HostedZoneId: hostedZoneID,
@@ -95,11 +95,11 @@ func Example_identityConstruct() {
 				UserPoolClientName: jsii.String("web-client"),
 			})
 
-		agcdkparams.Store(stack, "StoreUserPoolID", namespace, "user-pool-id", userPool.UserPoolId())
-		agcdkparams.Store(stack, "StoreUserPoolArn", namespace, "user-pool-arn", userPool.UserPoolArn())
-		agcdkparams.Store(stack, "StoreWebClientID", namespace, "web-client-id", client.UserPoolClientId())
+		bwcdkparams.Store(stack, "StoreUserPoolID", namespace, "user-pool-id", userPool.UserPoolId())
+		bwcdkparams.Store(stack, "StoreUserPoolArn", namespace, "user-pool-arn", userPool.UserPoolArn())
+		bwcdkparams.Store(stack, "StoreWebClientID", namespace, "web-client-id", client.UserPoolClientId())
 	} else {
-		userPoolID := agcdkparams.Lookup(stack, "LookupUserPoolID", namespace, "user-pool-id", "user-pool-id-lookup")
+		userPoolID := bwcdkparams.Lookup(stack, "LookupUserPoolID", namespace, "user-pool-id", "user-pool-id-lookup")
 		_ = awscognito.UserPool_FromUserPoolId(stack, jsii.String("UserPool"), userPoolID)
 	}
 	// Output:
@@ -131,11 +131,11 @@ func Example_multipleNamespaces() {
 		Env: &awscdk.Environment{Region: jsii.String("eu-west-1")},
 	})
 
-	dnsHostedZoneID := agcdkparams.Lookup(stack, "LookupDnsHostedZoneID", "dns", "hosted-zone-id", "dns-hosted-zone-lookup")
+	dnsHostedZoneID := bwcdkparams.Lookup(stack, "LookupDnsHostedZoneID", "dns", "hosted-zone-id", "dns-hosted-zone-lookup")
 
-	userPoolID := agcdkparams.Lookup(stack, "LookupUserPoolID", "identity", "user-pool-id", "identity-user-pool-lookup")
+	userPoolID := bwcdkparams.Lookup(stack, "LookupUserPoolID", "identity", "user-pool-id", "identity-user-pool-lookup")
 
-	crewPoolID := agcdkparams.Lookup(stack, "LookupCrewPoolID", "crew-identity", "user-pool-id", "crew-user-pool-lookup")
+	crewPoolID := bwcdkparams.Lookup(stack, "LookupCrewPoolID", "crew-identity", "user-pool-id", "crew-user-pool-lookup")
 
 	_ = dnsHostedZoneID
 	_ = userPoolID

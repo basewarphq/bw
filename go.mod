@@ -4,7 +4,6 @@ go 1.25.6
 
 require (
 	github.com/advdv/bhttp v0.7.1
-	github.com/aws-observability/aws-otel-go/exporters/xrayudp v1.0.0
 	github.com/aws/aws-cdk-go/awscdk/v2 v2.236.0
 	github.com/aws/aws-cdk-go/awscdklambdagoalpha/v2 v2.236.0-alpha.0
 	github.com/aws/aws-lambda-go v1.52.0
@@ -15,12 +14,6 @@ require (
 	github.com/cockroachdb/errors v1.12.0
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/iancoleman/strcase v0.3.0
-	go.opentelemetry.io/contrib/detectors/aws/lambda v0.65.0
-	go.opentelemetry.io/contrib/propagators/aws v1.40.0
-	go.opentelemetry.io/otel v1.40.0
-	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.40.0
-	go.opentelemetry.io/otel/sdk v1.40.0
-	go.opentelemetry.io/otel/trace v1.40.0
 	go.uber.org/fx v1.24.0
 	go.uber.org/zap v1.27.1
 )
@@ -28,6 +21,7 @@ require (
 require (
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/MawKKe/integer-interval-expressions-go v0.1.3 // indirect
+	github.com/aws-observability/aws-otel-go/exporters/xrayudp v1.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.32.7 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.7 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.17 // indirect
@@ -78,10 +72,16 @@ require (
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/yuin/goldmark v1.7.13 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
+	go.opentelemetry.io/contrib/detectors/aws/lambda v0.65.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.65.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0 // indirect
+	go.opentelemetry.io/contrib/propagators/aws v1.40.0 // indirect
+	go.opentelemetry.io/otel v1.40.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.35.0 // indirect
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.40.0 // indirect
 	go.opentelemetry.io/otel/metric v1.40.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.40.0 // indirect
+	go.opentelemetry.io/otel/trace v1.40.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect

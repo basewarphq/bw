@@ -19,7 +19,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
-	agcdkparams "github.com/basewarphq/bwapp/bwcdk/bwcdkparams"
+	"github.com/basewarphq/bwapp/bwcdk/bwcdkparams"
 	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
 )
 
@@ -55,7 +55,7 @@ func NewProvider(scope constructs.Construct, props ProviderProps) {
 			MetadataDocument: awsiam.SamlMetadataDocument_FromXml(props.SAMLMetadataDocument),
 		})
 
-		agcdkparams.Store(scope, "SAMLProviderARNParam", paramsNamespace, "saml-provider-arn",
+		bwcdkparams.Store(scope, "SAMLProviderARNParam", paramsNamespace, "saml-provider-arn",
 			provider.SamlProviderArn())
 
 		awscdk.NewCfnOutput(awscdk.Stack_Of(scope), jsii.String(SAMLProviderARNOutputKey), &awscdk.CfnOutputProps{
@@ -64,10 +64,10 @@ func NewProvider(scope constructs.Construct, props ProviderProps) {
 		})
 	} else {
 		// Look up from primary region and store locally for deployment stacks.
-		providerArn := agcdkparams.Lookup(scope, "LookupSAMLProviderARN",
+		providerArn := bwcdkparams.Lookup(scope, "LookupSAMLProviderARN",
 			paramsNamespace, "saml-provider-arn", "saml-provider-arn-lookup")
 
-		agcdkparams.Store(scope, "SAMLProviderARNParam", paramsNamespace, "saml-provider-arn",
+		bwcdkparams.Store(scope, "SAMLProviderARNParam", paramsNamespace, "saml-provider-arn",
 			providerArn)
 	}
 }
@@ -142,7 +142,7 @@ func NewSyncRole(scope constructs.Construct, props SyncRoleProps) SyncRole {
 
 	validateSAMLSubject(*props.SAMLSubject)
 
-	providerArn := agcdkparams.LookupLocal(scope, paramsNamespace, "saml-provider-arn")
+	providerArn := bwcdkparams.LookupLocal(scope, paramsNamespace, "saml-provider-arn")
 
 	samlProvider := awsiam.SamlProvider_FromSamlProviderArn(scope, jsii.String("SAMLProvider"), providerArn)
 
