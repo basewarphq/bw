@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 
-	"github.com/basewarphq/bwapp/cmd/internal/cdkctx"
-	"github.com/basewarphq/bwapp/cmd/internal/devslot"
-	"github.com/basewarphq/bwapp/cmd/internal/projcfg"
+	"github.com/basewarphq/bw/cmd/internal/cdkctx"
+	"github.com/basewarphq/bw/cmd/internal/devslot"
+	"github.com/basewarphq/bw/cmd/internal/projcfg"
 	"github.com/cockroachdb/errors"
 )
 

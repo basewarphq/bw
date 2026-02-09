@@ -3,7 +3,7 @@ package bwcdkutil_test
 import (
 	"testing"
 
-	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
+	"github.com/basewarphq/bw/bwcdk/bwcdkutil"
 )
 
 func TestRegionForIdent_AllRegionsRoundTrip(t *testing.T) {

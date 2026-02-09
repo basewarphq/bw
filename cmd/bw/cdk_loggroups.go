@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
-	"github.com/basewarphq/bwapp/cmd/internal/cmdexec"
-	"github.com/basewarphq/bwapp/cmd/internal/projcfg"
+	"github.com/basewarphq/bw/bwcdk/bwcdkutil"
+	"github.com/basewarphq/bw/cmd/internal/cmdexec"
+	"github.com/basewarphq/bw/cmd/internal/projcfg"
 )
 
 type LogGroupsCmd struct {

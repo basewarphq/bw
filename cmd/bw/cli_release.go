@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/basewarphq/bwapp/cmd/internal/cmdexec"
-	"github.com/basewarphq/bwapp/cmd/internal/projcfg"
+	"github.com/basewarphq/bw/cmd/internal/cmdexec"
+	"github.com/basewarphq/bw/cmd/internal/projcfg"
 	"github.com/cockroachdb/errors"
 )
 

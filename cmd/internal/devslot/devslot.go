@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/basewarphq/bwapp/cmd/internal/cmdexec"
+	"github.com/basewarphq/bw/cmd/internal/cmdexec"
 	"github.com/cockroachdb/errors"
 )
 
@@ -25,7 +25,7 @@ var (
 
 const (
 	keyPrefix     = "dev-slots/"
-	claimFileName = "bwapp.claim"
+	claimFileName = "bw.claim"
 )
 
 type ClaimFile struct {
@@ -269,7 +269,7 @@ func ReadClaimFile(projectRoot string) (*ClaimFile, error) {
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, errors.Mark(
-				errors.New("no active claim — run 'bwapp cdk slots claim' first"),
+				errors.New("no active claim — run 'bw cdk slots claim' first"),
 				ErrNoClaim,
 			)
 		}

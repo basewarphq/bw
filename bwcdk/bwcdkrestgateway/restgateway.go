@@ -18,9 +18,9 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53targets"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
-	"github.com/basewarphq/bwapp/bwcdk/bwcdkloggroup"
-	"github.com/basewarphq/bwapp/bwcdk/bwcdklwalambda"
-	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
+	"github.com/basewarphq/bw/bwcdk/bwcdkloggroup"
+	"github.com/basewarphq/bw/bwcdk/bwcdklwalambda"
+	"github.com/basewarphq/bw/bwcdk/bwcdkutil"
 	"github.com/iancoleman/strcase"
 )
 

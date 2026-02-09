@@ -5,7 +5,7 @@ import (
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/jsii-runtime-go"
-	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
+	"github.com/basewarphq/bw/bwcdk/bwcdkutil"
 )
 
 func TestResourceName_DeploymentStack(t *testing.T) {

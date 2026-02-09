@@ -32,12 +32,12 @@ go.work.sum
 # .vscode/
 
 # Dev slot claim
-bwapp.claim
+bw.claim
 
 # sometimes it compiles
 /coreconsole
 /coreback
-/bwapp
+/bw
 
 # goreleaser
 /dist

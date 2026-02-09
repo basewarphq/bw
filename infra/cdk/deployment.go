@@ -3,11 +3,11 @@ package cdk
 import (
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/jsii-runtime-go"
-	"github.com/basewarphq/bwapp/bwcdk/bwcdk1psync"
-	"github.com/basewarphq/bwapp/bwcdk/bwcdkcerts"
-	"github.com/basewarphq/bwapp/bwcdk/bwcdkdns"
-	"github.com/basewarphq/bwapp/bwcdk/bwcdkdynamo"
-	"github.com/basewarphq/bwapp/bwcdk/bwcdkrestgateway"
+	"github.com/basewarphq/bw/bwcdk/bwcdk1psync"
+	"github.com/basewarphq/bw/bwcdk/bwcdkcerts"
+	"github.com/basewarphq/bw/bwcdk/bwcdkdns"
+	"github.com/basewarphq/bw/bwcdk/bwcdkdynamo"
+	"github.com/basewarphq/bw/bwcdk/bwcdkrestgateway"
 )
 
 func NewDeployment(stack awscdk.Stack, deploymentIdent string) {

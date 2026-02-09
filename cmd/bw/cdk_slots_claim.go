@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/basewarphq/bwapp/cmd/internal/projcfg"
+	"github.com/basewarphq/bw/cmd/internal/projcfg"
 )
 
 type SlotClaimCmd struct{}

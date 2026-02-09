@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/basewarphq/bwapp/infra/cdk"
+	"github.com/basewarphq/bw/infra/cdk"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/jsii-runtime-go"
-	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
+	"github.com/basewarphq/bw/bwcdk/bwcdkutil"
 )
 
 const projectIdent = "bwapp"

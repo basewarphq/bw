@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/alecthomas/kong"
-	"github.com/basewarphq/bwapp/cmd/internal/projcfg"
-	"github.com/basewarphq/bwapp/cmd/internal/version"
+	"github.com/basewarphq/bw/cmd/internal/projcfg"
+	"github.com/basewarphq/bw/cmd/internal/version"
 )
 
 type App struct {
@@ -45,7 +45,7 @@ func main() {
 
 	var app App
 	ctx := kong.Parse(&app,
-		kong.Name("bwapp"),
+		kong.Name("bw"),
 		kong.Description("Basewarp development CLI."),
 		kong.Vars{"version": version.Version},
 		kong.Bind(cfg),

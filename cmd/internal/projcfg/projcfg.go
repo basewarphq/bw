@@ -8,7 +8,7 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-const configFile = "bwapp.toml"
+const configFile = "bw.toml"
 
 type Config struct {
 	Root string      `toml:"-"`

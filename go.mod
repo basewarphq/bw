@@ -1,4 +1,4 @@
-module github.com/basewarphq/bwapp
+module github.com/basewarphq/bw
 
 go 1.25.6
 

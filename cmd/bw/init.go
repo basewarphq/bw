@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 
-	"github.com/basewarphq/bwapp/cmd/internal/cmdexec"
-	"github.com/basewarphq/bwapp/cmd/internal/projcfg"
+	"github.com/basewarphq/bw/cmd/internal/cmdexec"
+	"github.com/basewarphq/bw/cmd/internal/projcfg"
 )
 
 type InitCmd struct{}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/basewarphq/bwapp/cmd/internal/cmdexec"
+	"github.com/basewarphq/bw/cmd/internal/cmdexec"
 	"github.com/cockroachdb/errors"
 )
 

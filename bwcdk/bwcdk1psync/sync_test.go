@@ -6,8 +6,8 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/jsii-runtime-go"
-	"github.com/basewarphq/bwapp/bwcdk/bwcdk1psync"
-	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
+	"github.com/basewarphq/bw/bwcdk/bwcdk1psync"
+	"github.com/basewarphq/bw/bwcdk/bwcdkutil"
 )
 
 // testConfig returns a Config for testing.

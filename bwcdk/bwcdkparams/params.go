@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/customresources"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
-	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
+	"github.com/basewarphq/bw/bwcdk/bwcdkutil"
 )
 
 // LookupLocal retrieves a parameter from SSM Parameter Store within the same region.

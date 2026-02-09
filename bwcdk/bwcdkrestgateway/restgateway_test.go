@@ -9,8 +9,8 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscertificatemanager"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53"
 	"github.com/aws/jsii-runtime-go"
-	"github.com/basewarphq/bwapp/bwcdk/bwcdkrestgateway"
-	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
+	"github.com/basewarphq/bw/bwcdk/bwcdkrestgateway"
+	"github.com/basewarphq/bw/bwcdk/bwcdkutil"
 )
 
 // testEntry is a valid entry path pointing to an actual Go command in the repo.

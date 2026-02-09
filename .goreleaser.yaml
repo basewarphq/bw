@@ -1,9 +1,9 @@
 version: 2
 
 builds:
-  - id: bwapp
-    main: ./cmd/bwapp
-    binary: bwapp
+  - id: bw
+    main: ./cmd/bw
+    binary: bw
     env:
       - CGO_ENABLED=0
     goos:
@@ -11,7 +11,7 @@ builds:
     goarch:
       - arm64
     ldflags:
-      - -s -w -X github.com/basewarphq/bwapp/cmd/internal/version.Version={{.Version}}
+      - -s -w -X github.com/basewarphq/bw/cmd/internal/version.Version={{.Version}}
 
 archives:
   - format: tar.gz

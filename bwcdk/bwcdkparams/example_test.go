@@ -5,8 +5,8 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscognito"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsroute53"
 	"github.com/aws/jsii-runtime-go"
-	"github.com/basewarphq/bwapp/bwcdk/bwcdkparams"
-	"github.com/basewarphq/bwapp/bwcdk/bwcdkutil"
+	"github.com/basewarphq/bw/bwcdk/bwcdkparams"
+	"github.com/basewarphq/bw/bwcdk/bwcdkutil"
 )
 
 // Example_dnsConstruct demonstrates storing and looking up DNS-related parameters.

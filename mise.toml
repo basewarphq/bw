@@ -14,4 +14,4 @@ shfmt = "latest"
 1password-cli = "latest"
 
 [shell_alias]
-bwapp = "go run ./cmd/bwapp"
+bw = "go run ./cmd/bw"
