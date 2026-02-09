@@ -38,3 +38,6 @@ bwapp.claim
 /coreconsole
 /coreback
 /bwapp
+
+# goreleaser
+/dist
