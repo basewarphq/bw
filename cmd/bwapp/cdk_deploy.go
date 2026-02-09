@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 
+	"github.com/basewarphq/bwapp/cmd/internal/cdkctx"
 	"github.com/basewarphq/bwapp/cmd/internal/cmdexec"
 	"github.com/basewarphq/bwapp/cmd/internal/projcfg"
 )
@@ -28,6 +29,11 @@ func (c *DeployCmd) Run(cfg *projcfg.Config) error {
 	if c.Hotswap {
 		args = append(args, "--hotswap")
 	}
-	args = append(args, "bwapp*"+deployment)
+	cctx, err := cdkctx.Load(cfg.CdkDir())
+	if err != nil {
+		return err
+	}
+
+	args = append(args, cctx.Qualifier+"*"+deployment)
 	return cmdexec.Run(ctx, cfg.CdkDir(), "cdk", args...)
 }

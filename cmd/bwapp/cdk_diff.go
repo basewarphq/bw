@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 
+	"github.com/basewarphq/bwapp/cmd/internal/cdkctx"
 	"github.com/basewarphq/bwapp/cmd/internal/cmdexec"
 	"github.com/basewarphq/bwapp/cmd/internal/projcfg"
 )
@@ -23,5 +24,10 @@ func (c *DiffCmd) Run(cfg *projcfg.Config) error {
 		deployment = claim.Slot
 	}
 
-	return cmdexec.Run(ctx, cfg.CdkDir(), "cdk", "diff", "bwapp*"+deployment)
+	cctx, err := cdkctx.Load(cfg.CdkDir())
+	if err != nil {
+		return err
+	}
+
+	return cmdexec.Run(ctx, cfg.CdkDir(), "cdk", "diff", cctx.Qualifier+"*"+deployment)
 }
