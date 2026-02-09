@@ -110,6 +110,10 @@ type Config struct {
 
 	// Validation flags for foundational infrastructure
 	DNSDelegated bool // true when DNS delegation is complete
+
+	// legacyRegionIdents holds custom region identifiers read from CDK context.
+	// Only populated when AppConfig.LegacyRegionIdent is true.
+	legacyRegionIdents map[string]string
 }
 
 // NewConfig reads and validates all CDK context values.
@@ -128,15 +132,27 @@ func NewConfig(scope constructs.Construct, acfg AppConfig) (*Config, error) {
 	cfg.BaseDomainName, readErrs = readContextString(scope, acfg.Prefix+"base-domain-name", readErrs)
 	cfg.DNSDelegated = readOptionalContextBool(scope, acfg.Prefix+"dns-delegated")
 
-	// Validate that all regions are known
-	if cfg.PrimaryRegion != "" && !IsKnownRegion(cfg.PrimaryRegion) {
-		readErrs = append(readErrs, fmt.Sprintf(
-			"unknown primary region %q - add it to bwcdkutil.RegionIdents", cfg.PrimaryRegion))
-	}
-	for _, region := range cfg.SecondaryRegions {
-		if !IsKnownRegion(region) {
+	if acfg.LegacyRegionIdent {
+		// Legacy mode: read custom region identifiers from CDK context keys
+		// like "{prefix}region-ident-{region}" instead of using the hardcoded
+		// RegionIdents map. See legacy.go for rationale.
+		allRegions := make([]string, 0, 1+len(cfg.SecondaryRegions))
+		if cfg.PrimaryRegion != "" {
+			allRegions = append(allRegions, cfg.PrimaryRegion)
+		}
+		allRegions = append(allRegions, cfg.SecondaryRegions...)
+		cfg.legacyRegionIdents, readErrs = readLegacyRegionIdents(scope, acfg.Prefix, allRegions, readErrs)
+	} else {
+		// Standard mode: validate that all regions are known in the hardcoded map.
+		if cfg.PrimaryRegion != "" && !IsKnownRegion(cfg.PrimaryRegion) {
 			readErrs = append(readErrs, fmt.Sprintf(
-				"unknown secondary region %q - add it to bwcdkutil.RegionIdents", region))
+				"unknown primary region %q - add it to bwcdkutil.RegionIdents", cfg.PrimaryRegion))
+		}
+		for _, region := range cfg.SecondaryRegions {
+			if !IsKnownRegion(region) {
+				readErrs = append(readErrs, fmt.Sprintf(
+					"unknown secondary region %q - add it to bwcdkutil.RegionIdents", region))
+			}
 		}
 	}
 
@@ -173,8 +189,13 @@ func (c *Config) AllRegions() []string {
 	return append([]string{c.PrimaryRegion}, c.SecondaryRegions...)
 }
 
-// RegionIdent returns the acronym identifier for a region.
+// RegionIdent returns the identifier for a region.
+// If legacy region identifiers are configured, those take precedence
+// over the standard 4-character identifiers.
 func (c *Config) RegionIdent(region string) string {
+	if ident, ok := c.legacyRegionIdents[region]; ok {
+		return ident
+	}
 	return RegionIdentFor(region)
 }
 

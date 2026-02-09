@@ -18,6 +18,12 @@ type DeploymentConstructor func(stack awscdk.Stack, deploymentIdent string)
 type AppConfig struct {
 	// Prefix for context keys (e.g., "myapp-" for "myapp-qualifier", "myapp-primary-region", etc.)
 	Prefix string
+
+	// LegacyRegionIdent enables reading custom region identifiers from CDK context
+	// instead of using the standard 4-character identifiers from RegionIdents.
+	// This prevents stack name changes when migrating legacy projects to bwcdkutil.
+	// See legacy.go for details.
+	LegacyRegionIdent bool
 }
 
 // SetupApp configures a CDK app with multi-region, multi-deployment stacks.
