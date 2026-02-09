@@ -94,7 +94,26 @@ func (s *Store) Release(ctx context.Context, slot, token string) error {
 		)
 	}
 
-	_, err = cmdexec.Output(ctx, "/", "aws", "s3api", "delete-object",
+	return s.deleteLock(ctx, slot)
+}
+
+func (s *Store) ForceRelease(ctx context.Context, slot string) error {
+	lock, err := s.GetLock(ctx, slot)
+	if err != nil {
+		return err
+	}
+	if lock == nil {
+		return errors.Mark(
+			errors.Newf("slot %s is not claimed", slot),
+			ErrSlotNotClaimed,
+		)
+	}
+
+	return s.deleteLock(ctx, slot)
+}
+
+func (s *Store) deleteLock(ctx context.Context, slot string) error {
+	_, err := cmdexec.Output(ctx, "/", "aws", "s3api", "delete-object",
 		"--bucket", s.Bucket,
 		"--key", keyPrefix+slot+".lock",
 		"--region", s.Region,
