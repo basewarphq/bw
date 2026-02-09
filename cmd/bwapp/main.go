@@ -12,6 +12,8 @@ import (
 type App struct {
 	Version kong.VersionFlag `help:"Show version."`
 
+	Init InitCmd `cmd:"" help:"Initialize local development environment."`
+
 	Cdk struct {
 		OnePasswordSync OnePasswordSyncCmd `cmd:"" name:"1psync" help:"Show 1Password sync configuration for a deployment."`
 		Bootstrap       BootstrapCmd       `cmd:"" help:"Bootstrap CDK in the current AWS account/region."`

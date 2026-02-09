@@ -1,3 +1,6 @@
+[env]
+_.file = ".env"
+
 [tools]
 amp = "latest"
 aws-cli = { version = "latest", symlink_bins = "true" }
@@ -8,6 +11,7 @@ node = "22"
 golangci-lint = "latest"
 shellcheck = "latest"
 shfmt = "latest"
+1password-cli = "latest"
 
 [shell_alias]
 bwapp = "go run ./cmd/bwapp"
