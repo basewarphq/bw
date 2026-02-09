@@ -2,12 +2,12 @@
 amp = "latest"
 aws-cli = { version = "latest", symlink_bins = "true" }
 go = "latest"
+goreleaser = "latest"
 node = "22"
 "npm:aws-cdk" = "latest"
 golangci-lint = "latest"
 shellcheck = "latest"
 shfmt = "latest"
-github-cli = "latest"
 
 [shell_alias]
 bwapp = "go run ./cmd/bwapp"

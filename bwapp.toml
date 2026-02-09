@@ -1,2 +1,6 @@
 [cdk]
 dir = "infra/cdk/cdk"
+
+[[cli]]
+name = "bwapp"
+main = "./cmd/bwapp"

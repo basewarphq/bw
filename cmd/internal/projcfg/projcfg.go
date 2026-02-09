@@ -11,12 +11,18 @@ import (
 const configFile = "bwapp.toml"
 
 type Config struct {
-	Root string    `toml:"-"`
-	Cdk  CdkConfig `toml:"cdk"`
+	Root string      `toml:"-"`
+	Cdk  CdkConfig   `toml:"cdk"`
+	Cli  []CliConfig `toml:"cli"`
 }
 
 type CdkConfig struct {
 	Dir string `toml:"dir"`
+}
+
+type CliConfig struct {
+	Name string `toml:"name"`
+	Main string `toml:"main"`
 }
 
 func (c *Config) CdkDir() string {
@@ -49,6 +55,14 @@ func (c *Config) validate() error {
 	}
 	if filepath.IsAbs(c.Cdk.Dir) {
 		return errors.Newf("cdk.dir must be relative, got %q", c.Cdk.Dir)
+	}
+	for i, cli := range c.Cli {
+		if cli.Name == "" {
+			return errors.Newf("cli[%d].name is required", i)
+		}
+		if cli.Main == "" {
+			return errors.Newf("cli[%d].main is required", i)
+		}
 	}
 	return nil
 }
