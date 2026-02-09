@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/basewarphq/bw/bwcdk/bwcdkutil"
+	"github.com/basewarphq/bw/cmd/internal/cdkctx"
 	"github.com/basewarphq/bw/cmd/internal/cfnread"
 	"github.com/basewarphq/bw/cmd/internal/cmdexec"
 	"github.com/basewarphq/bw/cmd/internal/projcfg"
@@ -20,18 +20,20 @@ type OnePasswordSyncCmd struct {
 func (c *OnePasswordSyncCmd) Run(cfg *projcfg.Config) error {
 	ctx := context.Background()
 
-	deployment := c.Deployment
-	if deployment == "" {
-		claim, err := ensureClaim(ctx, cfg)
-		if err != nil {
-			return err
-		}
-		deployment = claim.Slot
+	deployment, err := resolveDeployment(ctx, cfg, c.Deployment)
+	if err != nil {
+		return err
 	}
 
 	cdkDir := cfg.CdkDir()
 
-	out, err := cmdexec.Output(ctx, cdkDir, "cdk", "list")
+	cctx, err := cdkctx.Load(cdkDir)
+	if err != nil {
+		return err
+	}
+
+	listArgs := append([]string{"list"}, cfg.Cdk.CdkArgs(cctx.Qualifier)...)
+	out, err := cmdexec.Output(ctx, cdkDir, "cdk", listArgs...)
 	if err != nil {
 		return err
 	}
@@ -58,22 +60,18 @@ func (c *OnePasswordSyncCmd) Run(cfg *projcfg.Config) error {
 		return errors.Newf("no deployment stack found for %s", deployment)
 	}
 
-	ident := bwcdkutil.ExtractRegionIdent(sharedStack)
-	if ident == "" {
-		return errors.Newf("cannot extract region from stack %s", sharedStack)
-	}
-	region, ok := bwcdkutil.RegionForIdent(ident)
+	region, ok := cctx.ResolveStackRegion(sharedStack)
 	if !ok {
-		return errors.Newf("unknown region identifier %s", ident)
+		return errors.Newf("cannot resolve region from stack %s", sharedStack)
 	}
 	primaryRegion = region
 
-	sharedOutputs, err := cfnread.StackOutputs(ctx, primaryRegion, sharedStack)
+	sharedOutputs, err := cfnread.StackOutputs(ctx, primaryRegion, cfg.Cdk.Profile, sharedStack)
 	if err != nil {
 		return err
 	}
 
-	deployOutputs, err := cfnread.StackOutputs(ctx, primaryRegion, deploymentStack)
+	deployOutputs, err := cfnread.StackOutputs(ctx, primaryRegion, cfg.Cdk.Profile, deploymentStack)
 	if err != nil {
 		return err
 	}

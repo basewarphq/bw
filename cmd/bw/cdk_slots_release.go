@@ -24,7 +24,7 @@ func (c *SlotReleaseCmd) Run(cfg *projcfg.Config) error {
 		return err
 	}
 
-	accountID, err := devslot.AccountID(ctx)
+	accountID, err := devslot.AccountID(ctx, cfg.Cdk.Profile)
 	if err != nil {
 		return err
 	}

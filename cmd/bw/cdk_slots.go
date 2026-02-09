@@ -5,6 +5,7 @@ import (
 
 	"github.com/basewarphq/bw/cmd/internal/cdkctx"
 	"github.com/basewarphq/bw/cmd/internal/devslot"
+	"github.com/basewarphq/bw/cmd/internal/devstrategy"
 	"github.com/basewarphq/bw/cmd/internal/projcfg"
 	"github.com/cockroachdb/errors"
 )
@@ -13,6 +14,20 @@ type SlotsCmd struct {
 	Claim   SlotClaimCmd   `cmd:"" help:"Claim a free dev deployment slot."`
 	Release SlotReleaseCmd `cmd:"" help:"Release a claimed dev slot."`
 	Status  SlotStatusCmd  `cmd:"" help:"Show status of all dev slots."`
+}
+
+func resolveDeployment(ctx context.Context, cfg *projcfg.Config, explicit string) (string, error) {
+	if explicit != "" {
+		return explicit, nil
+	}
+	if cfg.Cdk.DevStrategy == "iam-username" {
+		return devstrategy.IAMDeployment(ctx, cfg.Cdk.Profile)
+	}
+	claim, err := ensureClaim(ctx, cfg)
+	if err != nil {
+		return "", err
+	}
+	return claim.Slot, nil
 }
 
 func ensureClaim(ctx context.Context, cfg *projcfg.Config) (*devslot.ClaimFile, error) {
@@ -44,7 +59,7 @@ func newClaim(ctx context.Context, cfg *projcfg.Config) (*devslot.ClaimFile, err
 		return nil, err
 	}
 
-	accountID, err := devslot.AccountID(ctx)
+	accountID, err := devslot.AccountID(ctx, cfg.Cdk.Profile)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +86,7 @@ func touchSlotClaim(
 	if err != nil {
 		return
 	}
-	accountID, err := devslot.AccountID(ctx)
+	accountID, err := devslot.AccountID(ctx, cfg.Cdk.Profile)
 	if err != nil {
 		return
 	}

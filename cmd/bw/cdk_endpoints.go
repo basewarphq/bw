@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/basewarphq/bw/bwcdk/bwcdkutil"
+	"github.com/basewarphq/bw/cmd/internal/cdkctx"
 	"github.com/basewarphq/bw/cmd/internal/cmdexec"
 	"github.com/basewarphq/bw/cmd/internal/projcfg"
 )
@@ -18,18 +18,20 @@ type EndpointsCmd struct {
 func (c *EndpointsCmd) Run(cfg *projcfg.Config) error {
 	ctx := context.Background()
 
-	deployment := c.Deployment
-	if deployment == "" {
-		claim, err := ensureClaim(ctx, cfg)
-		if err != nil {
-			return err
-		}
-		deployment = claim.Slot
+	deployment, err := resolveDeployment(ctx, cfg, c.Deployment)
+	if err != nil {
+		return err
 	}
 
 	cdkDir := cfg.CdkDir()
 
-	out, err := cmdexec.Output(ctx, cdkDir, "cdk", "list")
+	cctx, err := cdkctx.Load(cdkDir)
+	if err != nil {
+		return err
+	}
+
+	listArgs := append([]string{"list"}, cfg.Cdk.CdkArgs(cctx.Qualifier)...)
+	out, err := cmdexec.Output(ctx, cdkDir, "cdk", listArgs...)
 	if err != nil {
 		return err
 	}
@@ -40,24 +42,24 @@ func (c *EndpointsCmd) Run(cfg *projcfg.Config) error {
 			continue
 		}
 
-		ident := bwcdkutil.ExtractRegionIdent(stack)
-		if ident == "" {
-			continue
-		}
-		region, ok := bwcdkutil.RegionForIdent(ident)
+		region, ok := cctx.ResolveStackRegion(stack)
 		if !ok {
 			continue
 		}
 
 		fmt.Fprintf(os.Stdout, "=== %s (%s) ===\n", stack, region)
 
-		out, err := cmdexec.Output(ctx, cdkDir, "aws", "cloudformation", "describe-stacks",
+		awsArgs := make([]string, 0, 12+len(cfg.Cdk.AwsArgs()))
+		awsArgs = append(awsArgs,
+			"cloudformation", "describe-stacks",
 			"--no-cli-pager",
 			"--region", region,
 			"--stack-name", stack,
 			"--query", "Stacks[0].Outputs[?contains(OutputKey, 'GatewayURL')]",
 			"--output", "table",
 		)
+		awsArgs = append(awsArgs, cfg.Cdk.AwsArgs()...)
+		out, err := cmdexec.Output(ctx, cdkDir, "aws", awsArgs...)
 		if err != nil {
 			fmt.Fprintln(os.Stdout, "(not deployed)")
 		} else {

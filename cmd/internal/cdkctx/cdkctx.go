@@ -5,8 +5,10 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 
+	"github.com/basewarphq/bw/bwcdk/bwcdkutil"
 	"github.com/cockroachdb/errors"
 )
 
@@ -15,6 +17,7 @@ type CDKContext struct {
 	Prefix        string
 	PrimaryRegion string
 	Deployments   []string
+	RegionIdents  map[string]string
 }
 
 func Load(cdkDir string) (*CDKContext, error) {
@@ -46,11 +49,31 @@ func Load(cdkDir string) (*CDKContext, error) {
 		return nil, errors.Wrapf(err, "in %s", ctxFile)
 	}
 
+	regionIdents := make(map[string]string)
+	regionIdentPrefix := prefix + "region-ident-"
+	for key := range ctxMap {
+		if !strings.HasPrefix(key, regionIdentPrefix) {
+			continue
+		}
+		region := strings.TrimPrefix(key, regionIdentPrefix)
+		ident, err := getString(ctxMap, key)
+		if err != nil {
+			return nil, errors.Wrapf(err, "in %s", ctxFile)
+		}
+		regionIdents[ident] = region
+	}
+	for region, ident := range bwcdkutil.RegionIdents {
+		if _, ok := regionIdents[ident]; !ok {
+			regionIdents[ident] = region
+		}
+	}
+
 	return &CDKContext{
 		Qualifier:     qualifier,
 		Prefix:        prefix,
 		PrimaryRegion: primaryRegion,
 		Deployments:   deployments,
+		RegionIdents:  regionIdents,
 	}, nil
 }
 
@@ -70,6 +93,28 @@ func (c *CDKContext) BootstrapBucket(accountID string) string {
 
 func (c *CDKContext) IsValidDeployment(name string) bool {
 	return slices.Contains(c.Deployments, name)
+}
+
+func (c *CDKContext) ResolveStackRegion(stackName string) (string, bool) {
+	rest := strings.TrimPrefix(stackName, c.Qualifier)
+	if rest == stackName {
+		return "", false
+	}
+
+	idents := make([]string, 0, len(c.RegionIdents))
+	for ident := range c.RegionIdents {
+		idents = append(idents, ident)
+	}
+	sort.Slice(idents, func(i, j int) bool {
+		return len(idents[i]) > len(idents[j])
+	})
+
+	for _, ident := range idents {
+		if strings.HasPrefix(rest, ident) {
+			return c.RegionIdents[ident], true
+		}
+	}
+	return "", false
 }
 
 func readQualifier(cdkDir string) (string, error) {

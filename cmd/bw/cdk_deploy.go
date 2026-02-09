@@ -16,24 +16,21 @@ type DeployCmd struct {
 func (c *DeployCmd) Run(cfg *projcfg.Config) error {
 	ctx := context.Background()
 
-	deployment := c.Deployment
-	if deployment == "" {
-		claim, err := ensureClaim(ctx, cfg)
-		if err != nil {
-			return err
-		}
-		deployment = claim.Slot
+	deployment, err := resolveDeployment(ctx, cfg, c.Deployment)
+	if err != nil {
+		return err
+	}
+
+	cctx, err := cdkctx.Load(cfg.CdkDir())
+	if err != nil {
+		return err
 	}
 
 	args := []string{"deploy", "--require-approval", "never"}
 	if c.Hotswap {
 		args = append(args, "--hotswap")
 	}
-	cctx, err := cdkctx.Load(cfg.CdkDir())
-	if err != nil {
-		return err
-	}
-
-	args = append(args, cctx.Qualifier+"*"+deployment)
+	args = append(args, cfg.Cdk.CdkArgs(cctx.Qualifier)...)
+	args = append(args, cctx.Qualifier+"*Shared", cctx.Qualifier+"*"+deployment)
 	return cmdexec.Run(ctx, cfg.CdkDir(), "cdk", args...)
 }

@@ -27,7 +27,7 @@ func (c *SlotStatusCmd) Run(cfg *projcfg.Config) error {
 		return errors.New("no Dev* deployments defined in cdk.context.json")
 	}
 
-	accountID, err := devslot.AccountID(ctx)
+	accountID, err := devslot.AccountID(ctx, cfg.Cdk.Profile)
 	if err != nil {
 		return err
 	}

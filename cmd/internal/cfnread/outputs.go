@@ -17,13 +17,18 @@ type describeStacksResponse struct {
 	} `json:"Stacks"`
 }
 
-func StackOutputs(ctx context.Context, region, stackName string) (map[string]string, error) {
-	out, err := cmdexec.Output(ctx, "/", "aws", "cloudformation", "describe-stacks",
+func StackOutputs(ctx context.Context, region, profile, stackName string) (map[string]string, error) {
+	args := []string{
+		"cloudformation", "describe-stacks",
 		"--no-cli-pager",
 		"--region", region,
 		"--stack-name", stackName,
 		"--output", "json",
-	)
+	}
+	if profile != "" {
+		args = append(args, "--profile", profile)
+	}
+	out, err := cmdexec.Output(ctx, "/", "aws", args...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "describing stack %s in %s", stackName, region)
 	}

@@ -324,11 +324,16 @@ func RemoveClaimFile(projectRoot string) error {
 	return nil
 }
 
-func AccountID(ctx context.Context) (string, error) {
-	out, err := cmdexec.Output(ctx, "/", "aws", "sts", "get-caller-identity",
+func AccountID(ctx context.Context, profile string) (string, error) {
+	args := []string{
+		"sts", "get-caller-identity",
 		"--query", "Account",
 		"--output", "text",
-	)
+	}
+	if profile != "" {
+		args = append(args, "--profile", profile)
+	}
+	out, err := cmdexec.Output(ctx, "/", "aws", args...)
 	if err != nil {
 		return "", errors.Wrap(err, "getting AWS account ID")
 	}

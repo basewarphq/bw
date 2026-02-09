@@ -17,7 +17,31 @@ type Config struct {
 }
 
 type CdkConfig struct {
-	Dir string `toml:"dir"`
+	Dir             string `toml:"dir"`
+	Profile         string `toml:"profile"`
+	DevStrategy     string `toml:"dev-strategy"`
+	LegacyBootstrap bool   `toml:"legacy-bootstrap"`
+}
+
+func (c *CdkConfig) CdkArgs(qualifier string) []string {
+	var args []string
+	if c.LegacyBootstrap {
+		args = append(args,
+			"--qualifier", qualifier,
+			"--toolkit-stack-name", qualifier+"Bootstrap",
+		)
+	}
+	if c.Profile != "" {
+		args = append(args, "--profile", c.Profile)
+	}
+	return args
+}
+
+func (c *CdkConfig) AwsArgs() []string {
+	if c.Profile != "" {
+		return []string{"--profile", c.Profile}
+	}
+	return nil
 }
 
 type CliConfig struct {
@@ -55,6 +79,9 @@ func (c *Config) validate() error {
 	}
 	if filepath.IsAbs(c.Cdk.Dir) {
 		return errors.Newf("cdk.dir must be relative, got %q", c.Cdk.Dir)
+	}
+	if c.Cdk.DevStrategy != "" && c.Cdk.DevStrategy != "iam-username" {
+		return errors.Newf("cdk.dev-strategy must be %q, got %q", "iam-username", c.Cdk.DevStrategy)
 	}
 	for i, cli := range c.Cli {
 		if cli.Name == "" {

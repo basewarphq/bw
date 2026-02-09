@@ -15,13 +15,9 @@ type DiffCmd struct {
 func (c *DiffCmd) Run(cfg *projcfg.Config) error {
 	ctx := context.Background()
 
-	deployment := c.Deployment
-	if deployment == "" {
-		claim, err := ensureClaim(ctx, cfg)
-		if err != nil {
-			return err
-		}
-		deployment = claim.Slot
+	deployment, err := resolveDeployment(ctx, cfg, c.Deployment)
+	if err != nil {
+		return err
 	}
 
 	cctx, err := cdkctx.Load(cfg.CdkDir())
@@ -29,5 +25,10 @@ func (c *DiffCmd) Run(cfg *projcfg.Config) error {
 		return err
 	}
 
-	return cmdexec.Run(ctx, cfg.CdkDir(), "cdk", "diff", cctx.Qualifier+"*"+deployment)
+	cdkArgs := cfg.Cdk.CdkArgs(cctx.Qualifier)
+	args := make([]string, 0, 3+len(cdkArgs))
+	args = append(args, "diff")
+	args = append(args, cdkArgs...)
+	args = append(args, cctx.Qualifier+"*Shared", cctx.Qualifier+"*"+deployment)
+	return cmdexec.Run(ctx, cfg.CdkDir(), "cdk", args...)
 }
