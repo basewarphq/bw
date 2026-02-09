@@ -112,19 +112,6 @@ func (s *Store) ForceRelease(ctx context.Context, slot string) error {
 	return s.deleteLock(ctx, slot)
 }
 
-func (s *Store) deleteLock(ctx context.Context, slot string) error {
-	_, err := cmdexec.Output(ctx, "/", "aws", "s3api", "delete-object",
-		"--bucket", s.Bucket,
-		"--key", keyPrefix+slot+".lock",
-		"--region", s.Region,
-		"--no-cli-pager",
-	)
-	if err != nil {
-		return errors.Wrapf(err, "deleting lock for slot %s", slot)
-	}
-	return nil
-}
-
 func (s *Store) Touch(ctx context.Context, slot, token string) error {
 	lock, err := s.GetLock(ctx, slot)
 	if err != nil {
@@ -191,6 +178,19 @@ func (s *Store) ListAll(ctx context.Context, slots []string) (map[string]*LockIn
 		result[slot] = info
 	}
 	return result, nil
+}
+
+func (s *Store) deleteLock(ctx context.Context, slot string) error {
+	_, err := cmdexec.Output(ctx, "/", "aws", "s3api", "delete-object",
+		"--bucket", s.Bucket,
+		"--key", keyPrefix+slot+".lock",
+		"--region", s.Region,
+		"--no-cli-pager",
+	)
+	if err != nil {
+		return errors.Wrapf(err, "deleting lock for slot %s", slot)
+	}
+	return nil
 }
 
 func (s *Store) putObject(

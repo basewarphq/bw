@@ -49,7 +49,11 @@ func (c *CliReleaseCmd) Run(cfg *projcfg.Config) error {
 		return errors.Wrap(err, "pushing tag")
 	}
 
-	return cmdexec.Run(ctx, cfg.Root, "goreleaser", "release", "--clean")
+	if err := cmdexec.Run(ctx, cfg.Root, "goreleaser", "release", "--clean"); err != nil {
+		return err
+	}
+
+	return cmdexec.Run(ctx, cfg.Root, "mise", "cache", "clear")
 }
 
 func latestTag(ctx context.Context, dir string) (string, error) {

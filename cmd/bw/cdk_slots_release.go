@@ -8,6 +8,7 @@ import (
 	"github.com/basewarphq/bw/cmd/internal/cdkctx"
 	"github.com/basewarphq/bw/cmd/internal/devslot"
 	"github.com/basewarphq/bw/cmd/internal/projcfg"
+	"github.com/cockroachdb/errors"
 )
 
 type SlotReleaseCmd struct {
@@ -70,7 +71,7 @@ func (c *SlotReleaseCmd) resolveSlot(cfg *projcfg.Config) (slot, token string, i
 	}
 
 	if !c.Force {
-		return "", "", false, fmt.Errorf(
+		return "", "", false, errors.Newf(
 			"slot %s is not this checkout's claim; use --force to release it anyway", c.Slot,
 		)
 	}
