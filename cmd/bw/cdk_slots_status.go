@@ -8,13 +8,13 @@ import (
 
 	"github.com/basewarphq/bw/cmd/internal/cdkctx"
 	"github.com/basewarphq/bw/cmd/internal/devslot"
-	"github.com/basewarphq/bw/cmd/internal/projcfg"
+	"github.com/basewarphq/bw/cmd/internal/wscfg"
 	"github.com/cockroachdb/errors"
 )
 
 type SlotStatusCmd struct{}
 
-func (c *SlotStatusCmd) Run(cfg *projcfg.Config) error {
+func (c *SlotStatusCmd) Run(cfg *wscfg.Config) error {
 	ctx := context.Background()
 
 	cctx, err := cdkctx.Load(cfg.CdkDir())

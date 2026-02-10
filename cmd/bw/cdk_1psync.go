@@ -9,7 +9,7 @@ import (
 	"github.com/basewarphq/bw/cmd/internal/cdkctx"
 	"github.com/basewarphq/bw/cmd/internal/cfnread"
 	"github.com/basewarphq/bw/cmd/internal/cmdexec"
-	"github.com/basewarphq/bw/cmd/internal/projcfg"
+	"github.com/basewarphq/bw/cmd/internal/wscfg"
 	"github.com/cockroachdb/errors"
 )
 
@@ -17,7 +17,7 @@ type OnePasswordSyncCmd struct {
 	Deployment string `arg:"" optional:"" help:"Deployment name (e.g., Stag, Prod). Defaults to claimed dev slot."`
 }
 
-func (c *OnePasswordSyncCmd) Run(cfg *projcfg.Config) error {
+func (c *OnePasswordSyncCmd) Run(cfg *wscfg.Config) error {
 	ctx := context.Background()
 
 	deployment, err := resolveDeployment(ctx, cfg, c.Deployment)

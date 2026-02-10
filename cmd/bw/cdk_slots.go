@@ -6,7 +6,7 @@ import (
 	"github.com/basewarphq/bw/cmd/internal/cdkctx"
 	"github.com/basewarphq/bw/cmd/internal/devslot"
 	"github.com/basewarphq/bw/cmd/internal/devstrategy"
-	"github.com/basewarphq/bw/cmd/internal/projcfg"
+	"github.com/basewarphq/bw/cmd/internal/wscfg"
 	"github.com/cockroachdb/errors"
 )
 
@@ -16,7 +16,7 @@ type SlotsCmd struct {
 	Status  SlotStatusCmd  `cmd:"" help:"Show status of all dev slots."`
 }
 
-func resolveDeployment(ctx context.Context, cfg *projcfg.Config, explicit string) (string, error) {
+func resolveDeployment(ctx context.Context, cfg *wscfg.Config, explicit string) (string, error) {
 	if explicit != "" {
 		return explicit, nil
 	}
@@ -30,7 +30,7 @@ func resolveDeployment(ctx context.Context, cfg *projcfg.Config, explicit string
 	return claim.Slot, nil
 }
 
-func ensureClaim(ctx context.Context, cfg *projcfg.Config) (*devslot.ClaimFile, error) {
+func ensureClaim(ctx context.Context, cfg *wscfg.Config) (*devslot.ClaimFile, error) {
 	claim, err := devslot.ReadClaimFile(cfg.Root)
 	if err != nil && !errors.Is(err, devslot.ErrNoClaim) {
 		return nil, err
@@ -43,7 +43,7 @@ func ensureClaim(ctx context.Context, cfg *projcfg.Config) (*devslot.ClaimFile, 
 	return newClaim(ctx, cfg)
 }
 
-func newClaim(ctx context.Context, cfg *projcfg.Config) (*devslot.ClaimFile, error) {
+func newClaim(ctx context.Context, cfg *wscfg.Config) (*devslot.ClaimFile, error) {
 	cctx, err := cdkctx.Load(cfg.CdkDir())
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func newClaim(ctx context.Context, cfg *projcfg.Config) (*devslot.ClaimFile, err
 }
 
 func touchSlotClaim(
-	ctx context.Context, cfg *projcfg.Config, claim *devslot.ClaimFile,
+	ctx context.Context, cfg *wscfg.Config, claim *devslot.ClaimFile,
 ) {
 	cctx, err := cdkctx.Load(cfg.CdkDir())
 	if err != nil {

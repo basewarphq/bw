@@ -8,14 +8,14 @@ import (
 
 	"github.com/basewarphq/bw/cmd/internal/cdkctx"
 	"github.com/basewarphq/bw/cmd/internal/cmdexec"
-	"github.com/basewarphq/bw/cmd/internal/projcfg"
+	"github.com/basewarphq/bw/cmd/internal/wscfg"
 )
 
 type LogGroupsCmd struct {
 	Deployment string `arg:"" optional:"" help:"Deployment name (e.g., Staging, Prod). Defaults to claimed dev slot."`
 }
 
-func (c *LogGroupsCmd) Run(cfg *projcfg.Config) error {
+func (c *LogGroupsCmd) Run(cfg *wscfg.Config) error {
 	ctx := context.Background()
 
 	deployment, err := resolveDeployment(ctx, cfg, c.Deployment)

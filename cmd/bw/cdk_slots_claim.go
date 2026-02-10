@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/basewarphq/bw/cmd/internal/projcfg"
+	"github.com/basewarphq/bw/cmd/internal/wscfg"
 )
 
 type SlotClaimCmd struct{}
 
-func (c *SlotClaimCmd) Run(cfg *projcfg.Config) error {
+func (c *SlotClaimCmd) Run(cfg *wscfg.Config) error {
 	claim, err := ensureClaim(context.Background(), cfg)
 	if err != nil {
 		return err

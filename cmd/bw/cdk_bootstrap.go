@@ -13,7 +13,7 @@ import (
 	"github.com/basewarphq/bw/cmd/internal/cfnread"
 	"github.com/basewarphq/bw/cmd/internal/cfnvalidate"
 	"github.com/basewarphq/bw/cmd/internal/cmdexec"
-	"github.com/basewarphq/bw/cmd/internal/projcfg"
+	"github.com/basewarphq/bw/cmd/internal/wscfg"
 	"github.com/cockroachdb/errors"
 )
 
@@ -25,7 +25,7 @@ type BootstrapCmd struct {
 	PermissionsBoundary string `name:"permissions-boundary" help:"IAM permissions boundary for bootstrap roles."`
 }
 
-func (c *BootstrapCmd) Run(cfg *projcfg.Config) error {
+func (c *BootstrapCmd) Run(cfg *wscfg.Config) error {
 	ctx := context.Background()
 
 	profile := c.Profile
@@ -72,7 +72,7 @@ func (c *BootstrapCmd) Run(cfg *projcfg.Config) error {
 }
 
 func (c *BootstrapCmd) resolveBootstrapFlags(
-	ctx context.Context, cfg *projcfg.Config, cctx *cdkctx.CDKContext, profile string,
+	ctx context.Context, cfg *wscfg.Config, cctx *cdkctx.CDKContext, profile string,
 ) (executionPolicies, permissionsBoundary string, err error) {
 	if cfg.Cdk.PreBootstrap == nil {
 		return c.ExecutionPolicies, c.PermissionsBoundary, nil
@@ -107,7 +107,7 @@ func (c *BootstrapCmd) resolveBootstrapFlags(
 }
 
 func runPreBootstrap(
-	ctx context.Context, cfg *projcfg.Config, cctx *cdkctx.CDKContext, profile string,
+	ctx context.Context, cfg *wscfg.Config, cctx *cdkctx.CDKContext, profile string,
 ) (map[string]string, error) {
 	pb := cfg.Cdk.PreBootstrap
 	templatePath := filepath.Join(cfg.Root, pb.Template)
@@ -148,7 +148,7 @@ func filterProfileArgs(args []string) []string {
 	return filtered
 }
 
-func patchedBootstrapTemplate(ctx context.Context, cfg *projcfg.Config) (string, error) {
+func patchedBootstrapTemplate(ctx context.Context, cfg *wscfg.Config) (string, error) {
 	templateYAML, err := cmdexec.Output(ctx, cfg.CdkDir(), "cdk", "bootstrap", "--show-template")
 	if err != nil {
 		return "", errors.Wrap(err, "getting default bootstrap template")

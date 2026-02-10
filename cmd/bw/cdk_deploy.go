@@ -5,7 +5,7 @@ import (
 
 	"github.com/basewarphq/bw/cmd/internal/cdkctx"
 	"github.com/basewarphq/bw/cmd/internal/cmdexec"
-	"github.com/basewarphq/bw/cmd/internal/projcfg"
+	"github.com/basewarphq/bw/cmd/internal/wscfg"
 )
 
 type DeployCmd struct {
@@ -13,7 +13,7 @@ type DeployCmd struct {
 	Hotswap    bool   `help:"Enable CDK hotswap deployment for faster iterations."`
 }
 
-func (c *DeployCmd) Run(cfg *projcfg.Config) error {
+func (c *DeployCmd) Run(cfg *wscfg.Config) error {
 	ctx := context.Background()
 
 	deployment, err := resolveDeployment(ctx, cfg, c.Deployment)

@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/alecthomas/kong"
-	"github.com/basewarphq/bw/cmd/internal/projcfg"
 	"github.com/basewarphq/bw/cmd/internal/version"
+	"github.com/basewarphq/bw/cmd/internal/wscfg"
 )
 
 type App struct {
@@ -37,7 +37,7 @@ type App struct {
 }
 
 func main() {
-	cfg, err := projcfg.Load()
+	cfg, err := wscfg.Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)

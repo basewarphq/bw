@@ -7,7 +7,7 @@ import (
 
 	"github.com/basewarphq/bw/cmd/internal/cdkctx"
 	"github.com/basewarphq/bw/cmd/internal/devslot"
-	"github.com/basewarphq/bw/cmd/internal/projcfg"
+	"github.com/basewarphq/bw/cmd/internal/wscfg"
 	"github.com/cockroachdb/errors"
 )
 
@@ -16,7 +16,7 @@ type SlotReleaseCmd struct {
 	Force bool   `help:"Force-release the slot even if it belongs to someone else." short:"f"`
 }
 
-func (c *SlotReleaseCmd) Run(cfg *projcfg.Config) error {
+func (c *SlotReleaseCmd) Run(cfg *wscfg.Config) error {
 	ctx := context.Background()
 
 	cctx, err := cdkctx.Load(cfg.CdkDir())
@@ -56,7 +56,7 @@ func (c *SlotReleaseCmd) Run(cfg *projcfg.Config) error {
 	return nil
 }
 
-func (c *SlotReleaseCmd) resolveSlot(cfg *projcfg.Config) (slot, token string, isLocal bool, err error) {
+func (c *SlotReleaseCmd) resolveSlot(cfg *wscfg.Config) (slot, token string, isLocal bool, err error) {
 	claim, claimErr := devslot.ReadClaimFile(cfg.Root)
 
 	if c.Slot == "" {

@@ -7,7 +7,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/basewarphq/bw/cmd/internal/cmdexec"
-	"github.com/basewarphq/bw/cmd/internal/projcfg"
+	"github.com/basewarphq/bw/cmd/internal/wscfg"
 	"github.com/cockroachdb/errors"
 )
 
@@ -15,7 +15,7 @@ type CliReleaseCmd struct {
 	Minor bool `help:"Bump minor version instead of patch."`
 }
 
-func (c *CliReleaseCmd) Run(cfg *projcfg.Config) error {
+func (c *CliReleaseCmd) Run(cfg *wscfg.Config) error {
 	ctx := context.Background()
 
 	if _, err := cmdexec.Output(ctx, cfg.Root, "git", "diff", "--quiet", "HEAD"); err != nil {

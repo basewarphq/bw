@@ -5,14 +5,14 @@ import (
 
 	"github.com/basewarphq/bw/cmd/internal/cdkctx"
 	"github.com/basewarphq/bw/cmd/internal/cmdexec"
-	"github.com/basewarphq/bw/cmd/internal/projcfg"
+	"github.com/basewarphq/bw/cmd/internal/wscfg"
 )
 
 type DiffCmd struct {
 	Deployment string `arg:"" optional:"" help:"Deployment name (e.g., Stag, Prod). Defaults to claimed dev slot."`
 }
 
-func (c *DiffCmd) Run(cfg *projcfg.Config) error {
+func (c *DiffCmd) Run(cfg *wscfg.Config) error {
 	ctx := context.Background()
 
 	deployment, err := resolveDeployment(ctx, cfg, c.Deployment)

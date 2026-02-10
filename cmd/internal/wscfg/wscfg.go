@@ -1,4 +1,4 @@
-package projcfg
+package wscfg
 
 import (
 	"os"
