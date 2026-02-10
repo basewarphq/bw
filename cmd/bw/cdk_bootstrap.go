@@ -54,7 +54,12 @@ func (c *BootstrapCmd) Run(cfg *projcfg.Config) error {
 	args = append(args, "bootstrap")
 	args = append(args, cdkArgs...)
 	args = append(args, "--template", templatePath)
-	if profile != "" {
+	// CdkArgs() may already include --profile from cfg.Cdk.Profile. When the
+	// bootstrap command receives a different --profile override (e.g. an admin
+	// profile), strip the existing one to avoid passing --profile twice, which
+	// causes CDK to use the wrong (first) profile.
+	if profile != "" && profile != cfg.Cdk.Profile {
+		args = filterProfileArgs(args)
 		args = append(args, "--profile", profile)
 	}
 	if executionPolicies != "" {
@@ -129,6 +134,18 @@ func runPreBootstrap(
 	}
 
 	return outputs, nil
+}
+
+func filterProfileArgs(args []string) []string {
+	filtered := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--profile" && i+1 < len(args) {
+			i++
+			continue
+		}
+		filtered = append(filtered, args[i])
+	}
+	return filtered
 }
 
 func patchedBootstrapTemplate(ctx context.Context, cfg *projcfg.Config) (string, error) {
