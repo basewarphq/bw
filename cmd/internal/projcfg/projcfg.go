@@ -25,7 +25,8 @@ type CdkConfig struct {
 }
 
 type PreBootstrapConfig struct {
-	Template string `toml:"template"`
+	Template   string            `toml:"template"`
+	Parameters map[string]string `toml:"parameters"`
 }
 
 func (c *CdkConfig) CdkArgs(qualifier string) []string {

@@ -18,6 +18,7 @@ type CDKContext struct {
 	PrimaryRegion string
 	Deployments   []string
 	RegionIdents  map[string]string
+	ContextValues map[string]string
 }
 
 func Load(cdkDir string) (*CDKContext, error) {
@@ -68,12 +69,30 @@ func Load(cdkDir string) (*CDKContext, error) {
 		}
 	}
 
+	contextValues := make(map[string]string)
+	for key, raw := range ctxMap {
+		if !strings.HasPrefix(key, prefix) {
+			continue
+		}
+		shortKey := strings.TrimPrefix(key, prefix)
+		var s string
+		if json.Unmarshal(raw, &s) == nil {
+			contextValues[shortKey] = s
+			continue
+		}
+		var ss []string
+		if json.Unmarshal(raw, &ss) == nil {
+			contextValues[shortKey] = strings.Join(ss, ",")
+		}
+	}
+
 	return &CDKContext{
 		Qualifier:     qualifier,
 		Prefix:        prefix,
 		PrimaryRegion: primaryRegion,
 		Deployments:   deployments,
 		RegionIdents:  regionIdents,
+		ContextValues: contextValues,
 	}, nil
 }
 

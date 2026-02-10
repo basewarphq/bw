@@ -8,6 +8,7 @@ import (
 
 	"github.com/basewarphq/bw/cmd/internal/cdkctx"
 	"github.com/basewarphq/bw/cmd/internal/cfndeploy"
+	"github.com/basewarphq/bw/cmd/internal/cfnparams"
 	"github.com/basewarphq/bw/cmd/internal/cfnpatch"
 	"github.com/basewarphq/bw/cmd/internal/cfnread"
 	"github.com/basewarphq/bw/cmd/internal/cfnvalidate"
@@ -99,11 +100,16 @@ func runPreBootstrap(ctx context.Context, cfg *projcfg.Config, cctx *cdkctx.CDKC
 		return nil, errors.Wrap(err, "validating pre-bootstrap template")
 	}
 
+	params, err := cfnparams.Resolve(pb.Parameters, cctx.ContextValues)
+	if err != nil {
+		return nil, errors.Wrap(err, "resolving pre-bootstrap parameters")
+	}
+
 	stackName := cctx.Qualifier + "-pre-bootstrap"
 	profile := cfg.Cdk.Profile
 
 	fmt.Fprintf(os.Stderr, "Deploying pre-bootstrap stack %s...\n", stackName)
-	if err := cfndeploy.Deploy(ctx, cfg.Root, profile, stackName, templatePath); err != nil {
+	if err := cfndeploy.Deploy(ctx, cfg.Root, profile, stackName, templatePath, params); err != nil {
 		return nil, errors.Wrap(err, "deploying pre-bootstrap stack")
 	}
 
