@@ -3,27 +3,18 @@ package main
 import (
 	"context"
 
-	"github.com/basewarphq/bw/cmd/internal/cmdexec"
-	"github.com/basewarphq/bw/cmd/internal/shellfiles"
+	"github.com/basewarphq/bw/cmd/internal/dag"
+	"github.com/basewarphq/bw/cmd/internal/tool"
 	"github.com/basewarphq/bw/cmd/internal/wscfg"
 )
 
 type LintCmd struct{}
 
-func (c *LintCmd) Run(cfg *wscfg.Config) error {
+func (c *LintCmd) Run(cfg *wscfg.Config, reg *tool.Registry) error {
 	ctx := context.Background()
-	if err := cmdexec.Run(ctx, cfg.Root, "golangci-lint", "run", "./..."); err != nil {
-		return err
-	}
-
-	scripts, err := shellfiles.FindShellScripts(cfg.Root)
+	g, err := dag.Build(cfg.Projects, reg, cfg.Root, []tool.Step{tool.StepLint})
 	if err != nil {
 		return err
 	}
-	if len(scripts) == 0 {
-		return nil
-	}
-
-	args := append([]string{}, scripts...)
-	return cmdexec.Run(ctx, cfg.Root, "shellcheck", args...)
+	return dag.Execute(ctx, g)
 }

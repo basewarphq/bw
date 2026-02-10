@@ -3,7 +3,10 @@ module github.com/basewarphq/bw
 go 1.25.6
 
 require (
+	github.com/BurntSushi/toml v1.6.0
+	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/advdv/bhttp v0.7.1
+	github.com/alecthomas/kong v1.14.0
 	github.com/aws/aws-cdk-go/awscdk/v2 v2.236.0
 	github.com/aws/aws-cdk-go/awscdklambdagoalpha/v2 v2.236.0-alpha.0
 	github.com/aws/aws-lambda-go v1.52.0
@@ -14,15 +17,14 @@ require (
 	github.com/cockroachdb/errors v1.12.0
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/iancoleman/strcase v0.3.0
+	github.com/sourcegraph/tf-dag v0.2.2-0.20250131204052-3e8ff1477b4f
 	go.uber.org/fx v1.24.0
 	go.uber.org/zap v1.27.1
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	github.com/BurntSushi/toml v1.6.0 // indirect
-	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/MawKKe/integer-interval-expressions-go v0.1.3 // indirect
-	github.com/alecthomas/kong v1.14.0 // indirect
 	github.com/aws-observability/aws-otel-go/exporters/xrayudp v1.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.32.7 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.7 // indirect
@@ -102,5 +104,4 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250218202821-56aae31c358a // indirect
 	google.golang.org/grpc v1.71.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

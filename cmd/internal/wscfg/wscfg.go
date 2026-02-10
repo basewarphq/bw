@@ -11,9 +11,17 @@ import (
 const configFile = "bw.toml"
 
 type Config struct {
-	Root string      `toml:"-"`
-	Cdk  CdkConfig   `toml:"cdk"`
-	Cli  []CliConfig `toml:"cli"`
+	Root     string          `toml:"-"`
+	Cdk      CdkConfig       `toml:"cdk"`
+	Cli      []CliConfig     `toml:"cli"`
+	Projects []ProjectConfig `toml:"project"`
+}
+
+type ProjectConfig struct {
+	Name      string   `toml:"name"`
+	Dir       string   `toml:"dir"`
+	Tools     []string `toml:"tools"`
+	DependsOn []string `toml:"depends_on"`
 }
 
 type CdkConfig struct {
@@ -59,6 +67,10 @@ func (c *Config) CdkDir() string {
 	return filepath.Join(c.Root, c.Cdk.Dir)
 }
 
+func (c *Config) ProjectDir(proj ProjectConfig) string {
+	return filepath.Join(c.Root, proj.Dir)
+}
+
 func Load() (*Config, error) {
 	root, err := findRoot()
 	if err != nil {
@@ -80,22 +92,8 @@ func Load() (*Config, error) {
 }
 
 func (c *Config) validate() error {
-	if c.Cdk.Dir == "" {
-		return errors.New("cdk.dir is required")
-	}
-	if filepath.IsAbs(c.Cdk.Dir) {
-		return errors.Newf("cdk.dir must be relative, got %q", c.Cdk.Dir)
-	}
-	if c.Cdk.DevStrategy != "" && c.Cdk.DevStrategy != "iam-username" {
-		return errors.Newf("cdk.dev-strategy must be %q, got %q", "iam-username", c.Cdk.DevStrategy)
-	}
-	if pb := c.Cdk.PreBootstrap; pb != nil {
-		if pb.Template == "" {
-			return errors.New("cdk.pre-bootstrap.template is required")
-		}
-		if filepath.IsAbs(pb.Template) {
-			return errors.Newf("cdk.pre-bootstrap.template must be relative, got %q", pb.Template)
-		}
+	if err := c.Cdk.validate(); err != nil {
+		return err
 	}
 	for i, cli := range c.Cli {
 		if cli.Name == "" {
@@ -103,6 +101,57 @@ func (c *Config) validate() error {
 		}
 		if cli.Main == "" {
 			return errors.Newf("cli[%d].main is required", i)
+		}
+	}
+	return validateProjects(c.Projects)
+}
+
+func (c *CdkConfig) validate() error {
+	if c.Dir == "" {
+		return errors.New("cdk.dir is required")
+	}
+	if filepath.IsAbs(c.Dir) {
+		return errors.Newf("cdk.dir must be relative, got %q", c.Dir)
+	}
+	if c.DevStrategy != "" && c.DevStrategy != "iam-username" {
+		return errors.Newf("cdk.dev-strategy must be %q, got %q", "iam-username", c.DevStrategy)
+	}
+	if pb := c.PreBootstrap; pb != nil {
+		if pb.Template == "" {
+			return errors.New("cdk.pre-bootstrap.template is required")
+		}
+		if filepath.IsAbs(pb.Template) {
+			return errors.Newf("cdk.pre-bootstrap.template must be relative, got %q", pb.Template)
+		}
+	}
+	return nil
+}
+
+func validateProjects(projects []ProjectConfig) error {
+	names := make(map[string]struct{}, len(projects))
+	for i, proj := range projects {
+		if proj.Name == "" {
+			return errors.Newf("project[%d].name is required", i)
+		}
+		if proj.Dir == "" {
+			return errors.Newf("project[%d].dir is required", i)
+		}
+		if filepath.IsAbs(proj.Dir) {
+			return errors.Newf("project[%d].dir must be relative, got %q", i, proj.Dir)
+		}
+		if len(proj.Tools) == 0 {
+			return errors.Newf("project[%d].tools is required", i)
+		}
+		if _, dup := names[proj.Name]; dup {
+			return errors.Newf("duplicate project name %q", proj.Name)
+		}
+		names[proj.Name] = struct{}{}
+	}
+	for i, proj := range projects {
+		for _, dep := range proj.DependsOn {
+			if _, ok := names[dep]; !ok {
+				return errors.Newf("project[%d] (%q) depends on unknown project %q", i, proj.Name, dep)
+			}
 		}
 	}
 	return nil

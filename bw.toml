@@ -4,3 +4,8 @@ dir = "infra/cdk/cdk"
 [[cli]]
 name = "bw"
 main = "./cmd/bw"
+
+[[project]]
+name = "bw"
+dir = "."
+tools = ["go", "shell"]

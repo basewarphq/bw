@@ -3,12 +3,18 @@ package main
 import (
 	"context"
 
-	"github.com/basewarphq/bw/cmd/internal/cmdexec"
+	"github.com/basewarphq/bw/cmd/internal/dag"
+	"github.com/basewarphq/bw/cmd/internal/tool"
 	"github.com/basewarphq/bw/cmd/internal/wscfg"
 )
 
 type UnitTestCmd struct{}
 
-func (c *UnitTestCmd) Run(cfg *wscfg.Config) error {
-	return cmdexec.Run(context.Background(), cfg.Root, "go", "test", "./...")
+func (c *UnitTestCmd) Run(cfg *wscfg.Config, reg *tool.Registry) error {
+	ctx := context.Background()
+	g, err := dag.Build(cfg.Projects, reg, cfg.Root, []tool.Step{tool.StepUnitTest})
+	if err != nil {
+		return err
+	}
+	return dag.Execute(ctx, g)
 }
