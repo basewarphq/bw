@@ -20,6 +20,7 @@ import (
 const devSlotExpirationDays = 7
 
 type BootstrapCmd struct {
+	Profile             string `help:"AWS profile to use for bootstrap (requires admin permissions)."`
 	ExecutionPolicies   string `name:"execution-policies" help:"IAM policy ARNs for CFN execution role."`
 	PermissionsBoundary string `name:"permissions-boundary" help:"IAM permissions boundary for bootstrap roles."`
 }
@@ -27,12 +28,17 @@ type BootstrapCmd struct {
 func (c *BootstrapCmd) Run(cfg *projcfg.Config) error {
 	ctx := context.Background()
 
+	profile := c.Profile
+	if profile == "" {
+		profile = cfg.Cdk.Profile
+	}
+
 	cctx, err := cdkctx.Load(cfg.CdkDir())
 	if err != nil {
 		return err
 	}
 
-	executionPolicies, permissionsBoundary, err := c.resolveBootstrapFlags(ctx, cfg, cctx)
+	executionPolicies, permissionsBoundary, err := c.resolveBootstrapFlags(ctx, cfg, cctx, profile)
 	if err != nil {
 		return err
 	}
@@ -44,10 +50,13 @@ func (c *BootstrapCmd) Run(cfg *projcfg.Config) error {
 	defer os.Remove(templatePath)
 
 	cdkArgs := cfg.Cdk.CdkArgs(cctx.Qualifier)
-	args := make([]string, 0, 1+len(cdkArgs)+6)
+	args := make([]string, 0, 1+len(cdkArgs)+8)
 	args = append(args, "bootstrap")
 	args = append(args, cdkArgs...)
 	args = append(args, "--template", templatePath)
+	if profile != "" {
+		args = append(args, "--profile", profile)
+	}
 	if executionPolicies != "" {
 		args = append(args, "--cloudformation-execution-policies", executionPolicies)
 	}
@@ -58,13 +67,13 @@ func (c *BootstrapCmd) Run(cfg *projcfg.Config) error {
 }
 
 func (c *BootstrapCmd) resolveBootstrapFlags(
-	ctx context.Context, cfg *projcfg.Config, cctx *cdkctx.CDKContext,
+	ctx context.Context, cfg *projcfg.Config, cctx *cdkctx.CDKContext, profile string,
 ) (executionPolicies, permissionsBoundary string, err error) {
 	if cfg.Cdk.PreBootstrap == nil {
 		return c.ExecutionPolicies, c.PermissionsBoundary, nil
 	}
 
-	outputs, err := runPreBootstrap(ctx, cfg, cctx)
+	outputs, err := runPreBootstrap(ctx, cfg, cctx, profile)
 	if err != nil {
 		return "", "", err
 	}
@@ -92,7 +101,9 @@ func (c *BootstrapCmd) resolveBootstrapFlags(
 	return executionPolicies, permissionsBoundary, nil
 }
 
-func runPreBootstrap(ctx context.Context, cfg *projcfg.Config, cctx *cdkctx.CDKContext) (map[string]string, error) {
+func runPreBootstrap(
+	ctx context.Context, cfg *projcfg.Config, cctx *cdkctx.CDKContext, profile string,
+) (map[string]string, error) {
 	pb := cfg.Cdk.PreBootstrap
 	templatePath := filepath.Join(cfg.Root, pb.Template)
 
@@ -106,7 +117,6 @@ func runPreBootstrap(ctx context.Context, cfg *projcfg.Config, cctx *cdkctx.CDKC
 	}
 
 	stackName := cctx.Qualifier + "-pre-bootstrap"
-	profile := cfg.Cdk.Profile
 
 	fmt.Fprintf(os.Stderr, "Deploying pre-bootstrap stack %s...\n", stackName)
 	if err := cfndeploy.Deploy(ctx, cfg.Root, profile, stackName, templatePath, params); err != nil {
