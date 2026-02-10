@@ -6,8 +6,13 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/basewarphq/bw/cmd/internal/tool"
+	"github.com/basewarphq/bw/cmd/internal/tool/buftool"
 	"github.com/basewarphq/bw/cmd/internal/tool/gotool"
+	"github.com/basewarphq/bw/cmd/internal/tool/mockerytool"
+	"github.com/basewarphq/bw/cmd/internal/tool/openapitool"
 	"github.com/basewarphq/bw/cmd/internal/tool/shelltool"
+	"github.com/basewarphq/bw/cmd/internal/tool/templtool"
+	"github.com/basewarphq/bw/cmd/internal/tool/yamltool"
 	"github.com/basewarphq/bw/cmd/internal/version"
 	"github.com/basewarphq/bw/cmd/internal/wscfg"
 )
@@ -18,6 +23,7 @@ type App struct {
 
 	Doctor DoctorCmd `cmd:"" help:"Check that all required tools and files are present."`
 	Init   InitCmd   `cmd:"" help:"Initialize local development environment."`
+	Tools  ToolsCmd  `cmd:"" help:"Show the tool/step capability matrix."`
 
 	Cdk struct {
 		OnePasswordSync OnePasswordSyncCmd `cmd:"" name:"1psync" help:"Show 1Password sync configuration for a deployment."`
@@ -45,7 +51,12 @@ type App struct {
 
 func newRegistry() *tool.Registry {
 	reg := tool.NewRegistry()
+	reg.Register(templtool.New())
+	reg.Register(buftool.New())
+	reg.Register(openapitool.New())
+	reg.Register(mockerytool.New())
 	reg.Register(shelltool.New())
+	reg.Register(yamltool.New())
 	reg.Register(gotool.New())
 	return reg
 }
