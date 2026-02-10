@@ -7,7 +7,7 @@
     },
     {
       "tool": "Bash",
-      "matches": { "cmd": "*bwapp *" },
+      "matches": { "cmd": "bw *" },
       "action": "allow"
     }
   ]

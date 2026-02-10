@@ -17,10 +17,15 @@ type Config struct {
 }
 
 type CdkConfig struct {
-	Dir             string `toml:"dir"`
-	Profile         string `toml:"profile"`
-	DevStrategy     string `toml:"dev-strategy"`
-	LegacyBootstrap bool   `toml:"legacy-bootstrap"`
+	Dir             string              `toml:"dir"`
+	Profile         string              `toml:"profile"`
+	DevStrategy     string              `toml:"dev-strategy"`
+	LegacyBootstrap bool                `toml:"legacy-bootstrap"`
+	PreBootstrap    *PreBootstrapConfig `toml:"pre-bootstrap"`
+}
+
+type PreBootstrapConfig struct {
+	Template string `toml:"template"`
 }
 
 func (c *CdkConfig) CdkArgs(qualifier string) []string {
@@ -82,6 +87,14 @@ func (c *Config) validate() error {
 	}
 	if c.Cdk.DevStrategy != "" && c.Cdk.DevStrategy != "iam-username" {
 		return errors.Newf("cdk.dev-strategy must be %q, got %q", "iam-username", c.Cdk.DevStrategy)
+	}
+	if pb := c.Cdk.PreBootstrap; pb != nil {
+		if pb.Template == "" {
+			return errors.New("cdk.pre-bootstrap.template is required")
+		}
+		if filepath.IsAbs(pb.Template) {
+			return errors.Newf("cdk.pre-bootstrap.template must be relative, got %q", pb.Template)
+		}
 	}
 	for i, cli := range c.Cli {
 		if cli.Name == "" {

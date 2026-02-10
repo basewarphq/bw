@@ -1,5 +1,6 @@
 [env]
 _.file = ".env"
+_.path = [".bin"]
 
 [tools]
 amp = "latest"
@@ -13,5 +14,3 @@ shellcheck = "latest"
 shfmt = "latest"
 1password-cli = "latest"
 
-[shell_alias]
-bw = "go run ./cmd/bw"

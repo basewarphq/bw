@@ -2,10 +2,15 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/basewarphq/bw/cmd/internal/cdkctx"
+	"github.com/basewarphq/bw/cmd/internal/cfndeploy"
 	"github.com/basewarphq/bw/cmd/internal/cfnpatch"
+	"github.com/basewarphq/bw/cmd/internal/cfnread"
+	"github.com/basewarphq/bw/cmd/internal/cfnvalidate"
 	"github.com/basewarphq/bw/cmd/internal/cmdexec"
 	"github.com/basewarphq/bw/cmd/internal/projcfg"
 	"github.com/cockroachdb/errors"
@@ -26,6 +31,11 @@ func (c *BootstrapCmd) Run(cfg *projcfg.Config) error {
 		return err
 	}
 
+	executionPolicies, permissionsBoundary, err := c.resolveBootstrapFlags(ctx, cfg, cctx)
+	if err != nil {
+		return err
+	}
+
 	templatePath, err := patchedBootstrapTemplate(ctx, cfg)
 	if err != nil {
 		return err
@@ -37,13 +47,72 @@ func (c *BootstrapCmd) Run(cfg *projcfg.Config) error {
 	args = append(args, "bootstrap")
 	args = append(args, cdkArgs...)
 	args = append(args, "--template", templatePath)
-	if c.ExecutionPolicies != "" {
-		args = append(args, "--cloudformation-execution-policies", c.ExecutionPolicies)
+	if executionPolicies != "" {
+		args = append(args, "--cloudformation-execution-policies", executionPolicies)
 	}
-	if c.PermissionsBoundary != "" {
-		args = append(args, "--custom-permissions-boundary", c.PermissionsBoundary)
+	if permissionsBoundary != "" {
+		args = append(args, "--custom-permissions-boundary", permissionsBoundary)
 	}
 	return cmdexec.Run(ctx, cfg.CdkDir(), "cdk", args...)
+}
+
+func (c *BootstrapCmd) resolveBootstrapFlags(
+	ctx context.Context, cfg *projcfg.Config, cctx *cdkctx.CDKContext,
+) (executionPolicies, permissionsBoundary string, err error) {
+	if cfg.Cdk.PreBootstrap == nil {
+		return c.ExecutionPolicies, c.PermissionsBoundary, nil
+	}
+
+	outputs, err := runPreBootstrap(ctx, cfg, cctx)
+	if err != nil {
+		return "", "", err
+	}
+
+	executionPolicies = c.ExecutionPolicies
+	if v := outputs["ExecutionPolicyArn"]; v != "" {
+		if c.ExecutionPolicies != "" {
+			return "", "", errors.New(
+				"--execution-policies cannot be used when pre-bootstrap stack provides ExecutionPolicyArn",
+			)
+		}
+		executionPolicies = v
+	}
+
+	permissionsBoundary = c.PermissionsBoundary
+	if v := outputs["PermissionBoundaryName"]; v != "" {
+		if c.PermissionsBoundary != "" {
+			return "", "", errors.New(
+				"--permissions-boundary cannot be used when pre-bootstrap stack provides PermissionBoundaryName",
+			)
+		}
+		permissionsBoundary = v
+	}
+
+	return executionPolicies, permissionsBoundary, nil
+}
+
+func runPreBootstrap(ctx context.Context, cfg *projcfg.Config, cctx *cdkctx.CDKContext) (map[string]string, error) {
+	pb := cfg.Cdk.PreBootstrap
+	templatePath := filepath.Join(cfg.Root, pb.Template)
+
+	if err := cfnvalidate.PreBootstrapTemplate(templatePath); err != nil {
+		return nil, errors.Wrap(err, "validating pre-bootstrap template")
+	}
+
+	stackName := cctx.Qualifier + "-pre-bootstrap"
+	profile := cfg.Cdk.Profile
+
+	fmt.Fprintf(os.Stderr, "Deploying pre-bootstrap stack %s...\n", stackName)
+	if err := cfndeploy.Deploy(ctx, cfg.Root, profile, stackName, templatePath); err != nil {
+		return nil, errors.Wrap(err, "deploying pre-bootstrap stack")
+	}
+
+	outputs, err := cfnread.StackOutputs(ctx, cctx.PrimaryRegion, profile, stackName)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading pre-bootstrap stack outputs")
+	}
+
+	return outputs, nil
 }
 
 func patchedBootstrapTemplate(ctx context.Context, cfg *projcfg.Config) (string, error) {
