@@ -54,9 +54,7 @@ func Build(
 	}
 	bld.addStepEdges(projects)
 	bld.addToolDepEdges(projects)
-	if err := bld.addProjectDepEdges(projects); err != nil {
-		return nil, err
-	}
+	bld.addProjectDepEdges(projects)
 
 	bld.graph.TransitiveReduction()
 
@@ -117,7 +115,7 @@ func (bld *builder) addStepEdges(projects []wscfg.ProjectConfig) {
 				for back := idx - 1; back >= 0; back-- {
 					prev := bld.nodes[nodeKey{proj.Name, bld.steps[back], tl}]
 					if prev != nil {
-						bld.graph.Connect(tfdag.BasicEdge(prev, curr))
+						bld.graph.Connect(tfdag.BasicEdge(curr, prev))
 						break
 					}
 				}
@@ -138,7 +136,7 @@ func (bld *builder) addToolDepEdges(projects []wscfg.ProjectConfig) {
 			if err != nil {
 				continue
 			}
-			for _, depName := range resolved.Dependencies() {
+			for _, depName := range resolved.RunsAfter() {
 				if _, ok := projToolSet[depName]; !ok {
 					continue
 				}
@@ -146,7 +144,7 @@ func (bld *builder) addToolDepEdges(projects []wscfg.ProjectConfig) {
 					src := bld.nodes[nodeKey{proj.Name, step, depName}]
 					dst := bld.nodes[nodeKey{proj.Name, step, toolName}]
 					if src != nil && dst != nil {
-						bld.graph.Connect(tfdag.BasicEdge(src, dst))
+						bld.graph.Connect(tfdag.BasicEdge(dst, src))
 					}
 				}
 			}
@@ -154,7 +152,7 @@ func (bld *builder) addToolDepEdges(projects []wscfg.ProjectConfig) {
 	}
 }
 
-func (bld *builder) addProjectDepEdges(projects []wscfg.ProjectConfig) error {
+func (bld *builder) addProjectDepEdges(projects []wscfg.ProjectConfig) {
 	projByName := make(map[string]wscfg.ProjectConfig, len(projects))
 	for _, proj := range projects {
 		projByName[proj.Name] = proj
@@ -164,7 +162,7 @@ func (bld *builder) addProjectDepEdges(projects []wscfg.ProjectConfig) error {
 		for _, depName := range proj.DependsOn {
 			depProj, ok := projByName[depName]
 			if !ok {
-				return errors.Newf("project %q depends on unknown project %q", proj.Name, depName)
+				continue
 			}
 			for _, step := range bld.steps {
 				for _, toolName := range proj.Tools {
@@ -175,14 +173,13 @@ func (bld *builder) addProjectDepEdges(projects []wscfg.ProjectConfig) error {
 					for _, depTool := range depProj.Tools {
 						src := bld.nodes[nodeKey{depName, step, depTool}]
 						if src != nil {
-							bld.graph.Connect(tfdag.BasicEdge(src, dst))
+							bld.graph.Connect(tfdag.BasicEdge(dst, src))
 						}
 					}
 				}
 			}
 		}
 	}
-	return nil
 }
 
 func Execute(ctx context.Context, graph *tfdag.AcyclicGraph) error {

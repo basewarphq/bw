@@ -39,21 +39,21 @@ func nodeNames(graph *tfdag.AcyclicGraph) map[string]struct{} {
 	return names
 }
 
-func hasEdge(graph *tfdag.AcyclicGraph, from, to string) bool {
-	var fromNode, toNode *dag.Node
+func dependsOn(graph *tfdag.AcyclicGraph, waiter, dep string) bool {
+	var waiterNode, depNode *dag.Node
 	for _, node := range collectNodes(graph) {
-		if node.Name() == from {
-			fromNode = node
+		if node.Name() == waiter {
+			waiterNode = node
 		}
-		if node.Name() == to {
-			toNode = node
+		if node.Name() == dep {
+			depNode = node
 		}
 	}
-	if fromNode == nil || toNode == nil {
+	if waiterNode == nil || depNode == nil {
 		return false
 	}
 	for _, edge := range graph.Edges() {
-		if edge.Source() == fromNode && edge.Target() == toNode {
+		if edge.Source() == waiterNode && edge.Target() == depNode {
 			return true
 		}
 	}
@@ -96,17 +96,17 @@ func TestBuildStepOrdering(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !hasEdge(graph, "app:gen:go", "app:fmt:go") {
-		t.Error("expected edge gen -> fmt")
+	if !dependsOn(graph, "app:fmt:go", "app:gen:go") {
+		t.Error("expected fmt to depend on gen")
 	}
-	if !hasEdge(graph, "app:fmt:go", "app:lint:go") {
-		t.Error("expected edge fmt -> lint")
+	if !dependsOn(graph, "app:lint:go", "app:fmt:go") {
+		t.Error("expected lint to depend on fmt")
 	}
-	if !hasEdge(graph, "app:lint:go", "app:compiles:go") {
-		t.Error("expected edge lint -> compiles")
+	if !dependsOn(graph, "app:compiles:go", "app:lint:go") {
+		t.Error("expected compiles to depend on lint")
 	}
-	if !hasEdge(graph, "app:compiles:go", "app:unit-test:go") {
-		t.Error("expected edge compiles -> unit-test")
+	if !dependsOn(graph, "app:unit-test:go", "app:compiles:go") {
+		t.Error("expected unit-test to depend on compiles")
 	}
 }
 
@@ -138,8 +138,8 @@ func TestBuildSkipsUnsupportedSteps(t *testing.T) {
 	if _, ok := names["app:unit-test:shell"]; ok {
 		t.Error("shell should not have unit-test step")
 	}
-	if !hasEdge(graph, "app:fmt:shell", "app:lint:shell") {
-		t.Error("expected edge fmt -> lint (skipping unsupported gen)")
+	if !dependsOn(graph, "app:lint:shell", "app:fmt:shell") {
+		t.Error("expected lint to depend on fmt (skipping unsupported gen)")
 	}
 }
 
@@ -156,8 +156,8 @@ func TestBuildProjectDependencies(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !hasEdge(graph, "lib:lint:go", "app:lint:go") {
-		t.Error("expected project dependency edge lib:lint:go -> app:lint:go")
+	if !dependsOn(graph, "app:lint:go", "lib:lint:go") {
+		t.Error("expected app:lint:go to depend on lib:lint:go")
 	}
 }
 
@@ -174,16 +174,67 @@ func TestBuildUnknownToolErrors(t *testing.T) {
 	}
 }
 
-func TestBuildUnknownProjectDepErrors(t *testing.T) {
+func TestBuildUnknownProjectDepSkipped(t *testing.T) {
 	t.Parallel()
 	reg := newTestRegistry()
 	projects := []wscfg.ProjectConfig{
 		{Name: "app", Dir: "app", Tools: []string{"go"}, DependsOn: []string{"missing"}},
 	}
 
-	_, err := dag.Build(projects, reg, "/ws", []tool.Step{tool.StepFmt})
-	if err == nil {
-		t.Error("expected error for unknown project dependency")
+	graph, err := dag.Build(projects, reg, "/ws", []tool.Step{tool.StepFmt})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	names := nodeNames(graph)
+	if _, ok := names["app:fmt:go"]; !ok {
+		t.Error("expected node app:fmt:go")
+	}
+}
+
+func TestBuildFilteredProjectWithDeps(t *testing.T) {
+	t.Parallel()
+	reg := newTestRegistry()
+	projects := []wscfg.ProjectConfig{
+		{Name: "lib", Dir: "lib", Tools: []string{"go"}},
+		{Name: "app", Dir: "app", Tools: []string{"go"}, DependsOn: []string{"lib"}},
+	}
+
+	graph, err := dag.Build(projects, reg, "/ws", []tool.Step{tool.StepLint})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	names := nodeNames(graph)
+	if _, ok := names["app:lint:go"]; !ok {
+		t.Error("expected node app:lint:go")
+	}
+	if _, ok := names["lib:lint:go"]; !ok {
+		t.Error("expected node lib:lint:go")
+	}
+	if !dependsOn(graph, "app:lint:go", "lib:lint:go") {
+		t.Error("expected app:lint:go to depend on lib:lint:go")
+	}
+}
+
+func TestBuildFilteredProjectNoDepsFlag(t *testing.T) {
+	t.Parallel()
+	reg := newTestRegistry()
+	projects := []wscfg.ProjectConfig{
+		{Name: "app", Dir: "app", Tools: []string{"go"}, DependsOn: []string{"lib"}},
+	}
+
+	graph, err := dag.Build(projects, reg, "/ws", []tool.Step{tool.StepLint})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	names := nodeNames(graph)
+	if _, ok := names["app:lint:go"]; !ok {
+		t.Error("expected node app:lint:go")
+	}
+	if len(names) != 1 {
+		t.Errorf("expected 1 node, got %d", len(names))
 	}
 }
 
@@ -224,8 +275,8 @@ type mockTool struct {
 	lintCalls int
 }
 
-func (m *mockTool) Name() string           { return m.name }
-func (m *mockTool) Dependencies() []string { return nil }
+func (m *mockTool) Name() string        { return m.name }
+func (m *mockTool) RunsAfter() []string { return nil }
 
 func (m *mockTool) Fmt(_ context.Context, _ string) error {
 	m.mu.Lock()

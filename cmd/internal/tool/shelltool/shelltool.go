@@ -14,7 +14,7 @@ func New() *Tool { return &Tool{} }
 
 func (t *Tool) Name() string { return "shell" }
 
-func (t *Tool) Dependencies() []string { return nil }
+func (t *Tool) RunsAfter() []string { return nil }
 
 func (t *Tool) RequiredBinaries() []tool.BinaryRequirement {
 	return []tool.BinaryRequirement{

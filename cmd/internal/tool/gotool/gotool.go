@@ -13,7 +13,7 @@ func New() *Tool { return &Tool{} }
 
 func (t *Tool) Name() string { return "go" }
 
-func (t *Tool) Dependencies() []string { return []string{"templ"} }
+func (t *Tool) RunsAfter() []string { return []string{"templ"} }
 
 func (t *Tool) RequiredBinaries() []tool.BinaryRequirement {
 	return []tool.BinaryRequirement{

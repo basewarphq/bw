@@ -9,16 +9,16 @@ import (
 	"github.com/basewarphq/bw/cmd/internal/tool"
 )
 
-type ToolsCmd struct{}
+type ToolsMatrixCmd struct{}
 
-func (c *ToolsCmd) Run(reg *tool.Registry) error {
+func (c *ToolsMatrixCmd) Run(reg *tool.Registry) error {
 	allTools := reg.All()
 	steps := tool.AllDevCheckSteps
 
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
 	var header strings.Builder
-	header.WriteString("TOOL\tDEPS")
+	header.WriteString("TOOL")
 	for _, step := range steps {
 		header.WriteString("\t")
 		header.WriteString(strings.ToUpper(step.String()))
@@ -28,8 +28,6 @@ func (c *ToolsCmd) Run(reg *tool.Registry) error {
 	for _, tl := range allTools {
 		var row strings.Builder
 		row.WriteString(tl.Name())
-		row.WriteString("\t")
-		row.WriteString(strings.Join(tl.Dependencies(), ", "))
 		for _, step := range steps {
 			if tool.SupportsStep(tl, step) {
 				row.WriteString("\t✓")

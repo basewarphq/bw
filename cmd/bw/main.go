@@ -19,11 +19,14 @@ import (
 
 type App struct {
 	Version kong.VersionFlag `help:"Show version."`
-	Project string           `short:"p" help:"Run only for a specific project."`
+	Project string           `short:"p" help:"Run only for a specific project (includes transitive dependencies)."`
+	NoDeps  bool             `help:"With -p, skip transitive dependencies." name:"no-deps"`
 
 	Doctor DoctorCmd `cmd:"" help:"Check that all required tools and files are present."`
 	Init   InitCmd   `cmd:"" help:"Initialize local development environment."`
-	Tools  ToolsCmd  `cmd:"" help:"Show the tool/step capability matrix."`
+	Tools  struct {
+		Matrix ToolsMatrixCmd `cmd:"" help:"Show the tool/step capability matrix."`
+	} `cmd:"" help:"Tool commands."`
 
 	Cdk struct {
 		OnePasswordSync OnePasswordSyncCmd `cmd:"" name:"1psync" help:"Show 1Password sync configuration for a deployment."`
@@ -79,21 +82,10 @@ func main() {
 		kong.Bind(reg),
 	)
 
-	if app.Project != "" {
-		cfg.Projects = filterProjects(cfg.Projects, app.Project)
-	}
+	cfg.Projects = wscfg.FilterProjects(cfg.Projects, app.Project, app.NoDeps)
 
 	if err := ctx.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
-}
-
-func filterProjects(projects []wscfg.ProjectConfig, name string) []wscfg.ProjectConfig {
-	for _, p := range projects {
-		if p.Name == name {
-			return []wscfg.ProjectConfig{p}
-		}
-	}
-	return projects
 }

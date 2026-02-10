@@ -11,7 +11,7 @@ import (
 
 type Tool interface {
 	Name() string
-	Dependencies() []string
+	RunsAfter() []string
 }
 
 type BinaryRequirement struct {

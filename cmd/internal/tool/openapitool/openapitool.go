@@ -13,7 +13,7 @@ func New() *Tool { return &Tool{} }
 
 func (t *Tool) Name() string { return "openapi" }
 
-func (t *Tool) Dependencies() []string { return []string{"buf"} }
+func (t *Tool) RunsAfter() []string { return []string{"buf"} }
 
 func (t *Tool) RequiredBinaries() []tool.BinaryRequirement {
 	return []tool.BinaryRequirement{

@@ -157,6 +157,47 @@ func validateProjects(projects []ProjectConfig) error {
 	return nil
 }
 
+func FilterProjects(projects []ProjectConfig, name string, noDeps bool) []ProjectConfig {
+	if name == "" {
+		return projects
+	}
+
+	byName := make(map[string]ProjectConfig, len(projects))
+	for _, p := range projects {
+		byName[p.Name] = p
+	}
+
+	if _, ok := byName[name]; !ok {
+		return projects
+	}
+
+	if noDeps {
+		return []ProjectConfig{byName[name]}
+	}
+
+	visited := make(map[string]bool)
+	var order []ProjectConfig
+
+	var visit func(n string)
+	visit = func(n string) {
+		if visited[n] {
+			return
+		}
+		visited[n] = true
+		p, ok := byName[n]
+		if !ok {
+			return
+		}
+		for _, dep := range p.DependsOn {
+			visit(dep)
+		}
+		order = append(order, p)
+	}
+
+	visit(name)
+	return order
+}
+
 func findRoot() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
