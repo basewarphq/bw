@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/basewarphq/bw/cmd/internal/cdkctx"
 	"github.com/basewarphq/bw/cmd/internal/cmdexec"
 	"github.com/cockroachdb/errors"
 )
@@ -232,6 +233,64 @@ func (s *Store) putObject(
 	return out, nil
 }
 
+func EnsureClaim(ctx context.Context, dir, profile string) (*ClaimFile, error) {
+	claim, err := ReadClaimFile(dir)
+	if err != nil && !errors.Is(err, ErrNoClaim) {
+		return nil, err
+	}
+	if claim != nil {
+		TouchClaim(ctx, dir, profile, claim)
+		return claim, nil
+	}
+
+	cctx, err := cdkctx.Load(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	slots := cctx.DevSlots()
+	if len(slots) == 0 {
+		return nil, errors.New("no Dev* deployments defined in cdk.context.json")
+	}
+
+	token, err := GenerateToken()
+	if err != nil {
+		return nil, err
+	}
+
+	accountID, err := AccountID(ctx, profile)
+	if err != nil {
+		return nil, err
+	}
+
+	store := NewStore(cctx.BootstrapBucket(accountID), cctx.PrimaryRegion)
+	label := DefaultLabel(ctx)
+
+	slot, err := ClaimFirstAvailable(ctx, store, slots, token, label)
+	if err != nil {
+		return nil, err
+	}
+
+	claim = &ClaimFile{Slot: slot, Token: token}
+	if err := WriteClaimFile(dir, claim); err != nil {
+		return nil, err
+	}
+	return claim, nil
+}
+
+func TouchClaim(ctx context.Context, dir, profile string, claim *ClaimFile) {
+	cctx, err := cdkctx.Load(dir)
+	if err != nil {
+		return
+	}
+	accountID, err := AccountID(ctx, profile)
+	if err != nil {
+		return
+	}
+	store := NewStore(cctx.BootstrapBucket(accountID), cctx.PrimaryRegion)
+	_ = store.Touch(ctx, claim.Slot, claim.Token)
+}
+
 func ClaimFirstAvailable(
 	ctx context.Context, store *Store, slots []string, token, label string,
 ) (string, error) {
@@ -288,7 +347,7 @@ func ReadClaimFile(projectRoot string) (*ClaimFile, error) {
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, errors.Mark(
-				errors.New("no active claim — run 'bw cdk slots claim' first"),
+				errors.New("no active claim — run 'bw infra slots claim' first"),
 				ErrNoClaim,
 			)
 		}

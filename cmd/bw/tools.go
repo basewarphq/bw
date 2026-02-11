@@ -13,7 +13,7 @@ type ToolsMatrixCmd struct{}
 
 func (c *ToolsMatrixCmd) Run(reg *tool.Registry) error {
 	allTools := reg.All()
-	steps := tool.AllDevCheckSteps
+	steps := tool.AllSteps
 
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
@@ -38,5 +38,22 @@ func (c *ToolsMatrixCmd) Run(reg *tool.Registry) error {
 		fmt.Fprintln(writer, row.String())
 	}
 
-	return writer.Flush()
+	if err := writer.Flush(); err != nil {
+		return err
+	}
+
+	var hasLenses bool
+	for _, tl := range allTools {
+		names := tool.InspectionNames(tl)
+		if len(names) > 0 {
+			if !hasLenses {
+				fmt.Fprintln(os.Stdout)
+				fmt.Fprintln(os.Stdout, "Inspect lenses:")
+				hasLenses = true
+			}
+			fmt.Fprintf(os.Stdout, "  %s: %s\n", tl.Name(), strings.Join(names, ", "))
+		}
+	}
+
+	return nil
 }

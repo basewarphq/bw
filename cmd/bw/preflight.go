@@ -9,11 +9,11 @@ import (
 	"github.com/basewarphq/bw/cmd/internal/wscfg"
 )
 
-type DoctorCmd struct{}
+type PreflightCmd struct{}
 
-func (c *DoctorCmd) Run(cfg *wscfg.Config, reg *tool.Registry) error {
+func (c *PreflightCmd) Run(cfg *wscfg.Config, reg *tool.Registry) error {
 	ctx := tool.WithBinChecker(context.Background(), bincheck.NewChecker())
-	g, err := dag.Build(cfg.Projects, reg, cfg, tool.DoctorSteps)
+	g, err := dag.Build(cfg.Projects, reg, cfg, tool.PreflightSteps)
 	if err != nil {
 		return err
 	}

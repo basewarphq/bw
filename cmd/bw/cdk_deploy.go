@@ -1,10 +1,7 @@
 package main
 
 import (
-	"context"
-
-	"github.com/basewarphq/bw/cmd/internal/cdkctx"
-	"github.com/basewarphq/bw/cmd/internal/cmdexec"
+	"github.com/basewarphq/bw/cmd/internal/tool"
 	"github.com/basewarphq/bw/cmd/internal/wscfg"
 )
 
@@ -13,24 +10,9 @@ type DeployCmd struct {
 	Hotswap    bool   `help:"Enable CDK hotswap deployment for faster iterations."`
 }
 
-func (c *DeployCmd) Run(cfg *wscfg.Config) error {
-	ctx := context.Background()
-
-	deployment, err := resolveDeployment(ctx, cfg, c.Deployment)
-	if err != nil {
-		return err
-	}
-
-	cctx, err := cdkctx.Load(cfg.CdkDir())
-	if err != nil {
-		return err
-	}
-
-	args := []string{"deploy", "--require-approval", "never"}
-	if c.Hotswap {
-		args = append(args, "--hotswap")
-	}
-	args = append(args, cfg.Cdk.CdkArgs(cctx.Qualifier)...)
-	args = append(args, cctx.Qualifier+"*Shared", cctx.Qualifier+"*"+deployment)
-	return cmdexec.Run(ctx, cfg.CdkDir(), "cdk", args...)
+func (c *DeployCmd) Run(cfg *wscfg.Config, reg *tool.Registry) error {
+	return (&InfraDeployCmd{
+		Deployment: c.Deployment,
+		Hotswap:    c.Hotswap,
+	}).Run(cfg, reg)
 }

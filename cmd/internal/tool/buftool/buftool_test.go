@@ -33,7 +33,7 @@ string name = 1;
 	}
 
 	tl := buftool.New()
-	if err := tl.Fmt(context.Background(), dir); err != nil {
+	if err := tl.Fmt(context.Background(), dir, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -66,7 +66,7 @@ message HelloRequest {
 	}
 
 	tl := buftool.New()
-	if err := tl.Lint(context.Background(), dir); err != nil {
+	if err := tl.Lint(context.Background(), dir, nil); err != nil {
 		t.Errorf("expected clean proto to pass lint, got: %v", err)
 	}
 }
@@ -90,7 +90,7 @@ message hello_request {
 	}
 
 	tl := buftool.New()
-	if err := tl.Lint(context.Background(), dir); err == nil {
+	if err := tl.Lint(context.Background(), dir, nil); err == nil {
 		t.Error("expected lint to fail on proto with bad naming")
 	}
 }
@@ -102,7 +102,7 @@ func TestMissingBufYamlErrors(t *testing.T) {
 	dir := testutil.Setup(t, map[string]string{})
 
 	tl := buftool.New()
-	err := tl.Fmt(context.Background(), dir)
+	err := tl.Fmt(context.Background(), dir, nil)
 	if err == nil {
 		t.Fatal("expected error when buf.yaml is missing")
 	}

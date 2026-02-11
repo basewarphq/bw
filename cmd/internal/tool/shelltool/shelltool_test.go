@@ -24,7 +24,7 @@ fi
 	})
 
 	tl := shelltool.New()
-	if err := tl.Fmt(context.Background(), dir); err != nil {
+	if err := tl.Fmt(context.Background(), dir, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -47,7 +47,7 @@ func TestFmtNoShellScripts(t *testing.T) {
 	})
 
 	tl := shelltool.New()
-	if err := tl.Fmt(context.Background(), dir); err != nil {
+	if err := tl.Fmt(context.Background(), dir, nil); err != nil {
 		t.Errorf("expected no error when no shell scripts present, got: %v", err)
 	}
 }
@@ -66,7 +66,7 @@ echo "hello"
 	})
 
 	tl := shelltool.New()
-	if err := tl.Lint(context.Background(), dir); err != nil {
+	if err := tl.Lint(context.Background(), dir, nil); err != nil {
 		t.Errorf("expected clean script to pass lint, got: %v", err)
 	}
 }
@@ -83,7 +83,7 @@ echo $UNQUOTED_VAR
 	})
 
 	tl := shelltool.New()
-	if err := tl.Lint(context.Background(), dir); err == nil {
+	if err := tl.Lint(context.Background(), dir, nil); err == nil {
 		t.Error("expected lint to fail on unquoted variable")
 	}
 }
@@ -97,7 +97,7 @@ func TestLintNoShellScripts(t *testing.T) {
 	})
 
 	tl := shelltool.New()
-	if err := tl.Lint(context.Background(), dir); err != nil {
+	if err := tl.Lint(context.Background(), dir, nil); err != nil {
 		t.Errorf("expected no error when no shell scripts present, got: %v", err)
 	}
 }

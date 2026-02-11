@@ -1,6 +1,7 @@
 package tool_test
 
 import (
+	"context"
 	"io"
 	"strings"
 	"testing"
@@ -130,5 +131,66 @@ func TestCheckFilesCheckOnMissingFile(t *testing.T) {
 
 	if !strings.Contains(err.Error(), "go.mod") {
 		t.Errorf("expected error to mention go.mod, got: %v", err)
+	}
+}
+
+type testConfig struct {
+	Profile string
+}
+
+func TestToolConfigFromRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	ctx := tool.WithToolConfig(context.Background(), testConfig{Profile: "staging"})
+	got := tool.ToolConfigFrom[testConfig](ctx)
+	if got == nil {
+		t.Fatal("expected non-nil config")
+	}
+	if got.Profile != "staging" {
+		t.Errorf("expected Profile %q, got %q", "staging", got.Profile)
+	}
+}
+
+func TestToolConfigFromMissing(t *testing.T) {
+	t.Parallel()
+
+	got := tool.ToolConfigFrom[testConfig](context.Background())
+	if got != nil {
+		t.Errorf("expected nil, got %+v", got)
+	}
+}
+
+func TestToolConfigFromWrongType(t *testing.T) {
+	t.Parallel()
+
+	ctx := tool.WithToolConfig(context.Background(), "not-a-testConfig")
+	got := tool.ToolConfigFrom[testConfig](ctx)
+	if got != nil {
+		t.Errorf("expected nil for wrong type, got %+v", got)
+	}
+}
+
+func TestDeploymentContextRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	ctx := tool.WithDeployment(context.Background(), "prod")
+	d, ok := tool.DeploymentFrom(ctx)
+	if !ok {
+		t.Fatal("expected ok=true")
+	}
+	if d != "prod" {
+		t.Errorf("expected %q, got %q", "prod", d)
+	}
+}
+
+func TestDeploymentContextMissing(t *testing.T) {
+	t.Parallel()
+
+	d, ok := tool.DeploymentFrom(context.Background())
+	if ok {
+		t.Error("expected ok=false")
+	}
+	if d != "" {
+		t.Errorf("expected empty string, got %q", d)
 	}
 }

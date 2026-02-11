@@ -25,6 +25,10 @@ func (t *Tool) RequiredFiles() []tool.FileRequirement {
 	return nil
 }
 
-func (t *Tool) Fmt(ctx context.Context, dir string) error {
+func (t *Tool) Diagnose(ctx context.Context, dir string, r tool.NodeReporter) error {
+	return tool.DiagnoseDefaults(ctx, dir, t, tool.BinCheckerFrom(ctx), r)
+}
+
+func (t *Tool) Fmt(ctx context.Context, dir string, _ tool.NodeReporter) error {
 	return cmdexec.Run(ctx, dir, "yamlfmt", ".")
 }

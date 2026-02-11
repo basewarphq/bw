@@ -20,7 +20,7 @@ func TestMissingMockeryYmlErrors(t *testing.T) {
 	})
 
 	tl := mockerytool.New()
-	err := tl.Gen(context.Background(), dir)
+	err := tl.Gen(context.Background(), dir, nil)
 	if err == nil {
 		t.Fatal("expected error when .mockery.yml is missing")
 	}
@@ -40,7 +40,7 @@ func TestMissingToolDirectiveErrors(t *testing.T) {
 	})
 
 	tl := mockerytool.New()
-	err := tl.Gen(context.Background(), dir)
+	err := tl.Gen(context.Background(), dir, nil)
 	if err == nil {
 		t.Fatal("expected error when mockery tool directive is missing from go.mod")
 	}
@@ -71,7 +71,7 @@ func TestGenWithConfig(t *testing.T) {
 	}
 
 	tl := mockerytool.New()
-	if err := tl.Gen(context.Background(), dir); err != nil {
+	if err := tl.Gen(context.Background(), dir, nil); err != nil {
 		t.Skipf("mockery gen failed (mockery may not be available): %v", err)
 	}
 

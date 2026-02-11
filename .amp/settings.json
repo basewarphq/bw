@@ -7,7 +7,7 @@
     },
     {
       "tool": "Bash",
-      "matches": { "cmd": "bw *" },
+      "matches": { "cmd": ["bw *", "./.bin/bw *", "./bw *"] },
       "action": "allow"
     }
   ]

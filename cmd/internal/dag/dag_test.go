@@ -67,7 +67,7 @@ func TestBuildSingleProjectFmt(t *testing.T) {
 		{Name: "app", Dir: "app", Tools: []string{"go", "shell"}},
 	}
 
-	graph, err := dag.Build(projects, reg, "/ws", []tool.Step{tool.StepFmt})
+	graph, err := dag.Build(projects, reg, &wscfg.Config{Root: "/ws"}, []tool.Step{tool.StepFmt})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestBuildStepOrdering(t *testing.T) {
 		{Name: "app", Dir: "app", Tools: []string{"go"}},
 	}
 
-	graph, err := dag.Build(projects, reg, "/ws", tool.AllDevCheckSteps)
+	graph, err := dag.Build(projects, reg, &wscfg.Config{Root: "/ws"}, tool.PreflightSteps)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,11 +102,11 @@ func TestBuildStepOrdering(t *testing.T) {
 	if !dependsOn(graph, "app:lint:go", "app:fmt:go") {
 		t.Error("expected lint to depend on fmt")
 	}
-	if !dependsOn(graph, "app:compiles:go", "app:lint:go") {
-		t.Error("expected compiles to depend on lint")
+	if !dependsOn(graph, "app:build:go", "app:lint:go") {
+		t.Error("expected build to depend on lint")
 	}
-	if !dependsOn(graph, "app:unit-test:go", "app:compiles:go") {
-		t.Error("expected unit-test to depend on compiles")
+	if !dependsOn(graph, "app:unit-test:go", "app:build:go") {
+		t.Error("expected unit-test to depend on build")
 	}
 }
 
@@ -117,7 +117,7 @@ func TestBuildSkipsUnsupportedSteps(t *testing.T) {
 		{Name: "app", Dir: "app", Tools: []string{"shell"}},
 	}
 
-	graph, err := dag.Build(projects, reg, "/ws", tool.AllDevCheckSteps)
+	graph, err := dag.Build(projects, reg, &wscfg.Config{Root: "/ws"}, tool.PreflightSteps)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,8 +132,8 @@ func TestBuildSkipsUnsupportedSteps(t *testing.T) {
 	if _, ok := names["app:gen:shell"]; ok {
 		t.Error("shell should not have gen step")
 	}
-	if _, ok := names["app:compiles:shell"]; ok {
-		t.Error("shell should not have compiles step")
+	if _, ok := names["app:build:shell"]; ok {
+		t.Error("shell should not have build step")
 	}
 	if _, ok := names["app:unit-test:shell"]; ok {
 		t.Error("shell should not have unit-test step")
@@ -151,7 +151,7 @@ func TestBuildProjectDependencies(t *testing.T) {
 		{Name: "app", Dir: "app", Tools: []string{"go"}, DependsOn: []string{"lib"}},
 	}
 
-	graph, err := dag.Build(projects, reg, "/ws", []tool.Step{tool.StepLint})
+	graph, err := dag.Build(projects, reg, &wscfg.Config{Root: "/ws"}, []tool.Step{tool.StepLint})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestBuildUnknownToolErrors(t *testing.T) {
 		{Name: "app", Dir: "app", Tools: []string{"nonexistent"}},
 	}
 
-	_, err := dag.Build(projects, reg, "/ws", []tool.Step{tool.StepFmt})
+	_, err := dag.Build(projects, reg, &wscfg.Config{Root: "/ws"}, []tool.Step{tool.StepFmt})
 	if err == nil {
 		t.Error("expected error for unknown tool")
 	}
@@ -181,7 +181,7 @@ func TestBuildUnknownProjectDepSkipped(t *testing.T) {
 		{Name: "app", Dir: "app", Tools: []string{"go"}, DependsOn: []string{"missing"}},
 	}
 
-	graph, err := dag.Build(projects, reg, "/ws", []tool.Step{tool.StepFmt})
+	graph, err := dag.Build(projects, reg, &wscfg.Config{Root: "/ws"}, []tool.Step{tool.StepFmt})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +200,7 @@ func TestBuildFilteredProjectWithDeps(t *testing.T) {
 		{Name: "app", Dir: "app", Tools: []string{"go"}, DependsOn: []string{"lib"}},
 	}
 
-	graph, err := dag.Build(projects, reg, "/ws", []tool.Step{tool.StepLint})
+	graph, err := dag.Build(projects, reg, &wscfg.Config{Root: "/ws"}, []tool.Step{tool.StepLint})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +224,7 @@ func TestBuildFilteredProjectNoDepsFlag(t *testing.T) {
 		{Name: "app", Dir: "app", Tools: []string{"go"}, DependsOn: []string{"lib"}},
 	}
 
-	graph, err := dag.Build(projects, reg, "/ws", []tool.Step{tool.StepLint})
+	graph, err := dag.Build(projects, reg, &wscfg.Config{Root: "/ws"}, []tool.Step{tool.StepLint})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,12 +248,12 @@ func TestExecuteRunsAllNodes(t *testing.T) {
 		{Name: "app", Dir: "/tmp", Tools: []string{"mock"}},
 	}
 
-	graph, err := dag.Build(projects, reg, "/", []tool.Step{tool.StepFmt, tool.StepLint})
+	graph, err := dag.Build(projects, reg, &wscfg.Config{Root: "/"}, []tool.Step{tool.StepFmt, tool.StepLint})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = dag.Execute(context.Background(), graph)
+	err = dag.Execute(context.Background(), graph, noopReporter{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -268,6 +268,16 @@ func TestExecuteRunsAllNodes(t *testing.T) {
 	}
 }
 
+type noopReporter struct{}
+
+func (noopReporter) ForNode(_, _, _ string) tool.NodeReporter { return noopNodeReporter{} }
+
+type noopNodeReporter struct{}
+
+func (noopNodeReporter) Section(_ string)               {}
+func (noopNodeReporter) Table(_ []string, _ [][]string) {}
+func (noopNodeReporter) Error(_ string)                 {}
+
 type mockTool struct {
 	name      string
 	mu        sync.Mutex
@@ -278,16 +288,70 @@ type mockTool struct {
 func (m *mockTool) Name() string        { return m.name }
 func (m *mockTool) RunsAfter() []string { return nil }
 
-func (m *mockTool) Fmt(_ context.Context, _ string) error {
+func (m *mockTool) Fmt(_ context.Context, _ string, _ tool.NodeReporter) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.fmtCalls++
 	return nil
 }
 
-func (m *mockTool) Lint(_ context.Context, _ string) error {
+func (m *mockTool) Lint(_ context.Context, _ string, _ tool.NodeReporter) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.lintCalls++
 	return nil
+}
+
+type configMockTool struct {
+	name           string
+	mu             sync.Mutex
+	receivedConfig any
+}
+
+func (m *configMockTool) Name() string        { return m.name }
+func (m *configMockTool) RunsAfter() []string { return nil }
+
+func (m *configMockTool) Fmt(ctx context.Context, _ string, _ tool.NodeReporter) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.receivedConfig = tool.ToolConfigFrom[string](ctx)
+	return nil
+}
+
+func TestExecutePassesToolConfig(t *testing.T) {
+	t.Parallel()
+	reg := tool.NewRegistry()
+	mock := &configMockTool{name: "cfgmock"}
+	reg.Register(mock)
+
+	cfg := &wscfg.Config{
+		Root: "/",
+		DecodedToolConfigs: map[string]map[string]any{
+			"app": {"cfgmock": "test-profile"},
+		},
+	}
+
+	projects := []wscfg.ProjectConfig{
+		{Name: "app", Dir: "/tmp", Tools: []string{"cfgmock"}},
+	}
+
+	graph, err := dag.Build(projects, reg, cfg, []tool.Step{tool.StepFmt})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = dag.Execute(context.Background(), graph, noopReporter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mock.mu.Lock()
+	defer mock.mu.Unlock()
+	got, ok := mock.receivedConfig.(*string)
+	if !ok || got == nil {
+		t.Fatalf("expected *string config, got %T", mock.receivedConfig)
+	}
+	if *got != "test-profile" {
+		t.Errorf("expected config %q, got %q", "test-profile", *got)
+	}
 }

@@ -29,7 +29,18 @@ func (t *Tool) RequiredFiles() []tool.FileRequirement {
 	}
 }
 
-func (t *Tool) Fmt(ctx context.Context, dir string) error {
+func (t *Tool) Diagnose(ctx context.Context, dir string, r tool.NodeReporter) error {
+	return tool.DiagnoseDefaults(ctx, dir, t, tool.BinCheckerFrom(ctx), r)
+}
+
+func (t *Tool) Init(ctx context.Context, dir string, _ tool.NodeReporter) error {
+	if err := tool.CheckFiles(dir, t.RequiredFiles()); err != nil {
+		return err
+	}
+	return cmdexec.Run(ctx, dir, "go", "mod", "download")
+}
+
+func (t *Tool) Fmt(ctx context.Context, dir string, _ tool.NodeReporter) error {
 	if err := tool.CheckFiles(dir, t.RequiredFiles()); err != nil {
 		return err
 	}
@@ -39,28 +50,28 @@ func (t *Tool) Fmt(ctx context.Context, dir string) error {
 	return cmdexec.Run(ctx, dir, "golangci-lint", "fmt", "./...")
 }
 
-func (t *Tool) Gen(ctx context.Context, dir string) error {
+func (t *Tool) Gen(ctx context.Context, dir string, _ tool.NodeReporter) error {
 	if err := tool.CheckFiles(dir, t.RequiredFiles()); err != nil {
 		return err
 	}
 	return cmdexec.Run(ctx, dir, "go", "generate", "./...")
 }
 
-func (t *Tool) Lint(ctx context.Context, dir string) error {
+func (t *Tool) Lint(ctx context.Context, dir string, _ tool.NodeReporter) error {
 	if err := tool.CheckFiles(dir, t.RequiredFiles()); err != nil {
 		return err
 	}
 	return cmdexec.Run(ctx, dir, "golangci-lint", "run", "./...")
 }
 
-func (t *Tool) Compiles(ctx context.Context, dir string) error {
+func (t *Tool) Build(ctx context.Context, dir string, _ tool.NodeReporter) error {
 	if err := tool.CheckFiles(dir, t.RequiredFiles()); err != nil {
 		return err
 	}
 	return cmdexec.Run(ctx, dir, "go", "build", "./...")
 }
 
-func (t *Tool) UnitTest(ctx context.Context, dir string) error {
+func (t *Tool) UnitTest(ctx context.Context, dir string, _ tool.NodeReporter) error {
 	if err := tool.CheckFiles(dir, t.RequiredFiles()); err != nil {
 		return err
 	}

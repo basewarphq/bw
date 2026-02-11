@@ -1,15 +1,6 @@
 package main
 
-import (
-	"context"
-	"fmt"
-	"os"
-
-	"github.com/basewarphq/bw/cmd/internal/cdkctx"
-	"github.com/basewarphq/bw/cmd/internal/devslot"
-	"github.com/basewarphq/bw/cmd/internal/wscfg"
-	"github.com/cockroachdb/errors"
-)
+import "github.com/basewarphq/bw/cmd/internal/wscfg"
 
 type SlotReleaseCmd struct {
 	Slot  string `help:"Name of the slot to release (default: this checkout's claimed slot)." short:"s"`
@@ -17,64 +8,8 @@ type SlotReleaseCmd struct {
 }
 
 func (c *SlotReleaseCmd) Run(cfg *wscfg.Config) error {
-	ctx := context.Background()
-
-	cctx, err := cdkctx.Load(cfg.CdkDir())
-	if err != nil {
-		return err
-	}
-
-	accountID, err := devslot.AccountID(ctx, cfg.Cdk.Profile)
-	if err != nil {
-		return err
-	}
-
-	store := devslot.NewStore(cctx.BootstrapBucket(accountID), cctx.PrimaryRegion)
-
-	slot, token, isLocalClaim, err := c.resolveSlot(cfg)
-	if err != nil {
-		return err
-	}
-
-	if c.Force {
-		if err := store.ForceRelease(ctx, slot); err != nil {
-			return err
-		}
-	} else {
-		if err := store.Release(ctx, slot, token); err != nil {
-			return err
-		}
-	}
-
-	if isLocalClaim {
-		if err := devslot.RemoveClaimFile(cfg.Root); err != nil {
-			return err
-		}
-	}
-
-	fmt.Fprintf(os.Stdout, "Released %s\n", slot)
-	return nil
-}
-
-func (c *SlotReleaseCmd) resolveSlot(cfg *wscfg.Config) (slot, token string, isLocal bool, err error) {
-	claim, claimErr := devslot.ReadClaimFile(cfg.Root)
-
-	if c.Slot == "" {
-		if claimErr != nil {
-			return "", "", false, claimErr
-		}
-		return claim.Slot, claim.Token, true, nil
-	}
-
-	if claim != nil && claim.Slot == c.Slot {
-		return claim.Slot, claim.Token, true, nil
-	}
-
-	if !c.Force {
-		return "", "", false, errors.Newf(
-			"slot %s is not this checkout's claim; use --force to release it anyway", c.Slot,
-		)
-	}
-
-	return c.Slot, "", false, nil
+	return (&InfraSlotReleaseCmd{
+		Slot:  c.Slot,
+		Force: c.Force,
+	}).Run(cfg)
 }

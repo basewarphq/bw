@@ -5,19 +5,33 @@ import "fmt"
 type Step int
 
 const (
-	StepFmt Step = iota
+	StepInit Step = iota
+	StepDoctor
+	StepFmt
 	StepGen
 	StepLint
-	StepCompiles
+	StepBuild
 	StepUnitTest
+	StepRelease
+	StepBootstrap
+	StepDiff
+	StepDeploy
+	StepInspect
 )
 
 var stepNames = [...]string{
-	StepFmt:      "fmt",
-	StepGen:      "gen",
-	StepLint:     "lint",
-	StepCompiles: "compiles",
-	StepUnitTest: "unit-test",
+	StepInit:      "init",
+	StepDoctor:    "doctor",
+	StepFmt:       "fmt",
+	StepGen:       "gen",
+	StepLint:      "lint",
+	StepBuild:     "build",
+	StepUnitTest:  "unit-test",
+	StepRelease:   "release",
+	StepBootstrap: "bootstrap",
+	StepDiff:      "diff",
+	StepDeploy:    "deploy",
+	StepInspect:   "inspect",
 }
 
 func (s Step) String() string {
@@ -27,12 +41,25 @@ func (s Step) String() string {
 	return fmt.Sprintf("step(%d)", int(s))
 }
 
+var InitSteps = []Step{StepInit}
+
+var DoctorSteps = []Step{StepDoctor}
+
 var DevSteps = []Step{StepGen, StepFmt}
 
-var CheckSteps = []Step{StepLint, StepCompiles, StepUnitTest}
+var CheckSteps = []Step{StepLint, StepUnitTest}
 
-var AllDevCheckSteps = []Step{StepGen, StepFmt, StepLint, StepCompiles, StepUnitTest}
+var ReleaseSteps = []Step{StepRelease}
+
+var PreflightSteps = []Step{StepDoctor, StepGen, StepFmt, StepLint, StepBuild, StepUnitTest}
+
+var InfraSteps = []Step{StepBootstrap, StepDiff, StepDeploy, StepInspect}
+
+var AllSteps = []Step{
+	StepInit, StepDoctor, StepGen, StepFmt, StepLint, StepBuild, StepUnitTest,
+	StepRelease, StepBootstrap, StepDiff, StepDeploy, StepInspect,
+}
 
 func StepOrder() []Step {
-	return AllDevCheckSteps
+	return PreflightSteps
 }

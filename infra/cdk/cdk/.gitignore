@@ -19,3 +19,6 @@
 cdk.out
 
 cdk
+
+# Dev slot claim
+bw.claim

@@ -3,59 +3,34 @@ package wscfg
 import (
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/BurntSushi/toml"
+	"github.com/basewarphq/bw/cmd/internal/tool"
 	"github.com/cockroachdb/errors"
 )
 
 const configFile = "bw.toml"
 
 type Config struct {
-	Root     string          `toml:"-"`
-	Cdk      CdkConfig       `toml:"cdk"`
-	Cli      []CliConfig     `toml:"cli"`
-	Projects []ProjectConfig `toml:"project"`
+	Root               string                    `toml:"-"`
+	ProjectFilter      string                    `toml:"-"`
+	NoDeps             bool                      `toml:"-"`
+	Cli                []CliConfig               `toml:"cli"`
+	Projects           []ProjectConfig           `toml:"project"`
+	DecodedToolConfigs map[string]map[string]any `toml:"-"`
+}
+
+func (c *Config) FilteredProjects() []ProjectConfig {
+	return FilterProjects(c.Projects, c.ProjectFilter, c.NoDeps)
 }
 
 type ProjectConfig struct {
-	Name      string   `toml:"name"`
-	Dir       string   `toml:"dir"`
-	Tools     []string `toml:"tools"`
-	DependsOn []string `toml:"depends_on"`
-}
-
-type CdkConfig struct {
-	Dir             string              `toml:"dir"`
-	Profile         string              `toml:"profile"`
-	DevStrategy     string              `toml:"dev-strategy"`
-	LegacyBootstrap bool                `toml:"legacy-bootstrap"`
-	PreBootstrap    *PreBootstrapConfig `toml:"pre-bootstrap"`
-}
-
-type PreBootstrapConfig struct {
-	Template   string            `toml:"template"`
-	Parameters map[string]string `toml:"parameters"`
-}
-
-func (c *CdkConfig) CdkArgs(qualifier string) []string {
-	var args []string
-	if c.LegacyBootstrap {
-		args = append(args,
-			"--qualifier", qualifier,
-			"--toolkit-stack-name", qualifier+"Bootstrap",
-		)
-	}
-	if c.Profile != "" {
-		args = append(args, "--profile", c.Profile)
-	}
-	return args
-}
-
-func (c *CdkConfig) AwsArgs() []string {
-	if c.Profile != "" {
-		return []string{"--profile", c.Profile}
-	}
-	return nil
+	Name       string                    `toml:"name"`
+	Dir        string                    `toml:"dir"`
+	Tools      []string                  `toml:"tools"`
+	DependsOn  []string                  `toml:"depends_on"`
+	ToolConfig map[string]toml.Primitive `toml:"tool"`
 }
 
 type CliConfig struct {
@@ -63,22 +38,28 @@ type CliConfig struct {
 	Main string `toml:"main"`
 }
 
-func (c *Config) CdkDir() string {
-	return filepath.Join(c.Root, c.Cdk.Dir)
-}
-
 func (c *Config) ProjectDir(proj ProjectConfig) string {
 	return filepath.Join(c.Root, proj.Dir)
 }
 
-func Load() (*Config, error) {
+func (c *Config) FindProjectByTool(toolName string) (*ProjectConfig, error) {
+	for i := range c.Projects {
+		if slices.Contains(c.Projects[i].Tools, toolName) {
+			return &c.Projects[i], nil
+		}
+	}
+	return nil, errors.Newf("no project with tool %q found in workspace", toolName)
+}
+
+func Load(reg *tool.Registry) (*Config, error) {
 	root, err := findRoot()
 	if err != nil {
 		return nil, err
 	}
 
 	var cfg Config
-	if _, err := toml.DecodeFile(filepath.Join(root, configFile), &cfg); err != nil {
+	meta, err := toml.DecodeFile(filepath.Join(root, configFile), &cfg)
+	if err != nil {
 		return nil, errors.Wrapf(err, "parsing %s", configFile)
 	}
 
@@ -88,13 +69,25 @@ func Load() (*Config, error) {
 		return nil, errors.Wrapf(err, "invalid %s", configFile)
 	}
 
+	if err := cfg.decodeToolConfigs(meta, reg); err != nil {
+		return nil, err
+	}
+
 	return &cfg, nil
 }
 
-func (c *Config) validate() error {
-	if err := c.Cdk.validate(); err != nil {
-		return err
+func (c *Config) ProjectToolConfig(project, toolName string) any {
+	if c.DecodedToolConfigs == nil {
+		return nil
 	}
+	m, ok := c.DecodedToolConfigs[project]
+	if !ok {
+		return nil
+	}
+	return m[toolName]
+}
+
+func (c *Config) validate() error {
 	for i, cli := range c.Cli {
 		if cli.Name == "" {
 			return errors.Newf("cli[%d].name is required", i)
@@ -104,27 +97,6 @@ func (c *Config) validate() error {
 		}
 	}
 	return validateProjects(c.Projects)
-}
-
-func (c *CdkConfig) validate() error {
-	if c.Dir == "" {
-		return errors.New("cdk.dir is required")
-	}
-	if filepath.IsAbs(c.Dir) {
-		return errors.Newf("cdk.dir must be relative, got %q", c.Dir)
-	}
-	if c.DevStrategy != "" && c.DevStrategy != "iam-username" {
-		return errors.Newf("cdk.dev-strategy must be %q, got %q", "iam-username", c.DevStrategy)
-	}
-	if pb := c.PreBootstrap; pb != nil {
-		if pb.Template == "" {
-			return errors.New("cdk.pre-bootstrap.template is required")
-		}
-		if filepath.IsAbs(pb.Template) {
-			return errors.Newf("cdk.pre-bootstrap.template must be relative, got %q", pb.Template)
-		}
-	}
-	return nil
 }
 
 func validateProjects(projects []ProjectConfig) error {
@@ -196,6 +168,33 @@ func FilterProjects(projects []ProjectConfig, name string, noDeps bool) []Projec
 
 	visit(name)
 	return order
+}
+
+func (c *Config) decodeToolConfigs(meta toml.MetaData, reg *tool.Registry) error {
+	c.DecodedToolConfigs = make(map[string]map[string]any)
+	for _, proj := range c.Projects {
+		if len(proj.ToolConfig) == 0 {
+			continue
+		}
+		decoded := make(map[string]any, len(proj.ToolConfig))
+		for toolName, raw := range proj.ToolConfig {
+			tl, err := reg.Get(toolName)
+			if err != nil {
+				return errors.Wrapf(err, "project %q", proj.Name)
+			}
+			ct, ok := tl.(tool.Configurable)
+			if !ok {
+				return errors.Newf("project %q: tool %q does not accept configuration", proj.Name, toolName)
+			}
+			cfg, err := ct.DecodeConfig(meta, raw)
+			if err != nil {
+				return errors.Wrapf(err, "project %q: tool %q", proj.Name, toolName)
+			}
+			decoded[toolName] = cfg
+		}
+		c.DecodedToolConfigs[proj.Name] = decoded
+	}
+	return nil
 }
 
 func findRoot() (string, error) {

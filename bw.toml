@@ -1,6 +1,3 @@
-[cdk]
-dir = "infra/cdk/cdk"
-
 [[cli]]
 name = "bw"
 main = "./cmd/bw"
@@ -8,4 +5,21 @@ main = "./cmd/bw"
 [[project]]
 name = "bw"
 dir = "."
-tools = ["go", "shell"]
+tools = ["go", "shell", "1password"]
+
+[project.tool.1password]
+env-template = ".env.tpl"
+env-output = ".env"
+
+[[project]]
+name = "bw-cli"
+dir = "."
+tools = ["goreleaser"]
+
+[project.tool.goreleaser]
+version-file = "VERSION"
+
+[[project]]
+name = "infra"
+dir = "infra/cdk/cdk"
+tools = ["cdk"]

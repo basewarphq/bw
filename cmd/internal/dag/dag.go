@@ -16,6 +16,7 @@ type Node struct {
 	Step    tool.Step
 	Tool    tool.Tool
 	Dir     string
+	Config  any
 }
 
 func (n *Node) Name() string {
@@ -32,20 +33,22 @@ type builder struct {
 	graph    tfdag.AcyclicGraph
 	nodes    map[nodeKey]*Node
 	registry *tool.Registry
-	wsRoot   string
+	cfg      *wscfg.Config
 	steps    []tool.Step
 }
 
 func Build(
 	projects []wscfg.ProjectConfig,
 	registry *tool.Registry,
-	wsRoot string,
+	cfg *wscfg.Config,
 	steps []tool.Step,
 ) (*tfdag.AcyclicGraph, error) {
+	projects = wscfg.FilterProjects(projects, cfg.ProjectFilter, cfg.NoDeps)
+
 	bld := &builder{
 		nodes:    make(map[nodeKey]*Node),
 		registry: registry,
-		wsRoot:   wsRoot,
+		cfg:      cfg,
 		steps:    steps,
 	}
 
@@ -79,7 +82,7 @@ func (bld *builder) resolveTools(proj wscfg.ProjectConfig) ([]tool.Tool, error) 
 
 func (bld *builder) createNodes(projects []wscfg.ProjectConfig) error {
 	for _, proj := range projects {
-		projDir := filepath.Join(bld.wsRoot, proj.Dir)
+		projDir := filepath.Join(bld.cfg.Root, proj.Dir)
 		projTools, err := bld.resolveTools(proj)
 		if err != nil {
 			return err
@@ -94,6 +97,7 @@ func (bld *builder) createNodes(projects []wscfg.ProjectConfig) error {
 					Step:    step,
 					Tool:    tl,
 					Dir:     projDir,
+					Config:  bld.cfg.ProjectToolConfig(proj.Name, tl.Name()),
 				}
 				key := nodeKey{proj.Name, step, tl.Name()}
 				bld.nodes[key] = node
@@ -182,12 +186,20 @@ func (bld *builder) addProjectDepEdges(projects []wscfg.ProjectConfig) {
 	}
 }
 
-func Execute(ctx context.Context, graph *tfdag.AcyclicGraph) error {
+func Execute(ctx context.Context, graph *tfdag.AcyclicGraph, reporter tool.Reporter) error {
 	return graph.Walk(func(vertex tfdag.Vertex) error {
 		node, ok := vertex.(*Node)
 		if !ok {
 			return errors.Newf("unexpected vertex type: %T", vertex)
 		}
-		return tool.RunStep(ctx, node.Tool, node.Step, node.Dir)
+		nodeCtx := ctx
+		if node.Config != nil {
+			nodeCtx = tool.WithToolConfig(nodeCtx, node.Config)
+		}
+		r := reporter.ForNode(node.Project, node.Step.String(), node.Tool.Name())
+		if err := tool.RunStep(nodeCtx, node.Tool, node.Step, node.Dir, r); err != nil {
+			return errors.Wrapf(err, "%s", node.Name())
+		}
+		return nil
 	})
 }

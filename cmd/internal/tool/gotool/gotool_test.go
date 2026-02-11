@@ -53,7 +53,7 @@ fmt.Println(    "hello"   )
 	}
 
 	tl := gotool.New()
-	if err := tl.Fmt(context.Background(), dir); err != nil {
+	if err := tl.Fmt(context.Background(), dir, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -81,7 +81,7 @@ func TestGenRunsGoGenerate(t *testing.T) {
 	}
 
 	tl := gotool.New()
-	if err := tl.Gen(context.Background(), dir); err != nil {
+	if err := tl.Gen(context.Background(), dir, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -104,7 +104,7 @@ func main() {}
 	}
 
 	tl := gotool.New()
-	if err := tl.Lint(context.Background(), dir); err != nil {
+	if err := tl.Lint(context.Background(), dir, nil); err != nil {
 		t.Errorf("expected clean code to pass lint, got: %v", err)
 	}
 }
@@ -136,12 +136,12 @@ linters:
 	}
 
 	tl := gotool.New()
-	if err := tl.Lint(context.Background(), dir); err == nil {
+	if err := tl.Lint(context.Background(), dir, nil); err == nil {
 		t.Error("expected lint to fail on code with ineffectual assignment")
 	}
 }
 
-func TestCompilesPassesValidCode(t *testing.T) {
+func TestBuildPassesValidCode(t *testing.T) {
 	t.Parallel()
 
 	dir := setupGoProject(t)
@@ -155,12 +155,12 @@ func main() {}
 	}
 
 	tl := gotool.New()
-	if err := tl.Compiles(context.Background(), dir); err != nil {
-		t.Errorf("expected valid code to compile, got: %v", err)
+	if err := tl.Build(context.Background(), dir, nil); err != nil {
+		t.Errorf("expected valid code to build, got: %v", err)
 	}
 }
 
-func TestCompilesFailsSyntaxError(t *testing.T) {
+func TestBuildFailsSyntaxError(t *testing.T) {
 	t.Parallel()
 
 	dir := setupGoProject(t)
@@ -174,8 +174,8 @@ func main() {
 	}
 
 	tl := gotool.New()
-	if err := tl.Compiles(context.Background(), dir); err == nil {
-		t.Error("expected compilation to fail on syntax error")
+	if err := tl.Build(context.Background(), dir, nil); err == nil {
+		t.Error("expected build to fail on syntax error")
 	}
 }
 
@@ -206,7 +206,7 @@ func TestAdd(t *testing.T) {
 	}
 
 	tl := gotool.New()
-	if err := tl.UnitTest(context.Background(), dir); err != nil {
+	if err := tl.UnitTest(context.Background(), dir, nil); err != nil {
 		t.Errorf("expected passing test, got: %v", err)
 	}
 }
@@ -238,7 +238,7 @@ func TestAdd(t *testing.T) {
 	}
 
 	tl := gotool.New()
-	if err := tl.UnitTest(context.Background(), dir); err == nil {
+	if err := tl.UnitTest(context.Background(), dir, nil); err == nil {
 		t.Error("expected failing test to return error")
 	}
 }
@@ -251,7 +251,7 @@ func TestMissingGoModErrors(t *testing.T) {
 	})
 
 	tl := gotool.New()
-	if err := tl.Fmt(context.Background(), dir); err == nil {
+	if err := tl.Fmt(context.Background(), dir, nil); err == nil {
 		t.Error("expected error when go.mod is missing")
 	}
 }
@@ -264,7 +264,7 @@ func TestMissingGolangciYmlErrors(t *testing.T) {
 	})
 
 	tl := gotool.New()
-	if err := tl.Fmt(context.Background(), dir); err == nil {
+	if err := tl.Fmt(context.Background(), dir, nil); err == nil {
 		t.Error("expected error when .golangci.yml is missing")
 	}
 }

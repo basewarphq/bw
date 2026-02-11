@@ -12,9 +12,9 @@ type GenCmd struct{}
 
 func (c *GenCmd) Run(cfg *wscfg.Config, reg *tool.Registry) error {
 	ctx := context.Background()
-	g, err := dag.Build(cfg.Projects, reg, cfg.Root, []tool.Step{tool.StepGen})
+	g, err := dag.Build(cfg.Projects, reg, cfg, []tool.Step{tool.StepGen})
 	if err != nil {
 		return err
 	}
-	return dag.Execute(ctx, g)
+	return dag.Execute(ctx, g, cliReporter{})
 }

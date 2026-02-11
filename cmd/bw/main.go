@@ -7,8 +7,11 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/basewarphq/bw/cmd/internal/tool"
 	"github.com/basewarphq/bw/cmd/internal/tool/buftool"
+	"github.com/basewarphq/bw/cmd/internal/tool/cdktool"
+	"github.com/basewarphq/bw/cmd/internal/tool/goreleasertool"
 	"github.com/basewarphq/bw/cmd/internal/tool/gotool"
 	"github.com/basewarphq/bw/cmd/internal/tool/mockerytool"
+	"github.com/basewarphq/bw/cmd/internal/tool/onepasswordtool"
 	"github.com/basewarphq/bw/cmd/internal/tool/openapitool"
 	"github.com/basewarphq/bw/cmd/internal/tool/shelltool"
 	"github.com/basewarphq/bw/cmd/internal/tool/templtool"
@@ -29,27 +32,25 @@ type App struct {
 	} `cmd:"" help:"Tool commands."`
 
 	Cdk struct {
-		OnePasswordSync OnePasswordSyncCmd `cmd:"" name:"1psync" help:"Show 1Password sync configuration for a deployment."`
-		Bootstrap       BootstrapCmd       `cmd:"" help:"Bootstrap CDK in the current AWS account/region."`
-		Deploy          DeployCmd          `cmd:"" help:"Deploy CDK stacks for a deployment."`
-		Diff            DiffCmd            `cmd:"" help:"Show CDK diff for a deployment."`
-		Endpoints       EndpointsCmd       `cmd:"" help:"Show all gateway endpoints for a deployment."`
-		LogGroups       LogGroupsCmd       `cmd:"" name:"log-groups" help:"Show all CloudWatch log groups for a deployment."`
-		Slots           SlotsCmd           `cmd:"" help:"Manage dev deployment slots."`
+		Bootstrap BootstrapCmd `cmd:"" help:"Bootstrap CDK in the current AWS account/region."`
+		Deploy    DeployCmd    `cmd:"" help:"Deploy CDK stacks for a deployment."`
+		Diff      DiffCmd      `cmd:"" help:"Show CDK diff for a deployment."`
+		Slots     SlotsCmd     `cmd:"" help:"Manage dev deployment slots."`
 	} `cmd:"" help:"CDK commands."`
-	Check struct {
-		Lint     LintCmd     `cmd:"" help:"Run linters for all projects."`
-		Compiles CompilesCmd `cmd:"" help:"Check that all projects compile."`
-		UnitTest UnitTestCmd `cmd:"" name:"unit-test" help:"Run unit tests for all projects."`
-	} `cmd:"" help:"Check commands."`
-	CheckAll CheckAllCmd `cmd:"" name:"check-all" help:"Run all dev and check steps."`
-	Cli      struct {
-		Release CliReleaseCmd `cmd:"" help:"Release CLI binaries using GoReleaser."`
-	} `cmd:"" help:"CLI release commands."`
-	Dev struct {
-		Fmt FmtCmd `cmd:"" help:"Format code in all projects."`
-		Gen GenCmd `cmd:"" help:"Generate code in all projects."`
-	} `cmd:"" help:"Development commands."`
+	Build     BuildCmd     `cmd:"" help:"Build all projects."`
+	Fmt       FmtCmd       `cmd:"" help:"Format code in all projects."`
+	Gen       GenCmd       `cmd:"" help:"Generate code in all projects."`
+	Lint      LintCmd      `cmd:"" help:"Run linters for all projects."`
+	UnitTest  UnitTestCmd  `cmd:"" name:"unit-test" help:"Run unit tests for all projects."`
+	Preflight PreflightCmd `cmd:"" help:"Run all doctor, gen, fmt, lint, build, and unit-test steps."`
+	Release   ReleaseCmd   `cmd:"" help:"Build and publish release artifacts."`
+	Infra     struct {
+		Bootstrap InfraBootstrapCmd `cmd:"" help:"Bootstrap CDK in the current AWS account/region."`
+		Diff      InfraDiffCmd      `cmd:"" help:"Show infrastructure diff for a deployment."`
+		Deploy    InfraDeployCmd    `cmd:"" help:"Deploy infrastructure stacks for a deployment."`
+		Inspect   InfraInspectCmd   `cmd:"" help:"Inspect deployment. Use -l to select lenses."`
+		Slots     InfraSlotsCmd     `cmd:"" help:"Manage dev deployment slots."`
+	} `cmd:"" help:"Infrastructure commands."`
 }
 
 func newRegistry() *tool.Registry {
@@ -61,17 +62,20 @@ func newRegistry() *tool.Registry {
 	reg.Register(shelltool.New())
 	reg.Register(yamltool.New())
 	reg.Register(gotool.New())
+	reg.Register(onepasswordtool.New())
+	reg.Register(goreleasertool.New())
+	reg.Register(cdktool.New())
 	return reg
 }
 
 func main() {
-	cfg, err := wscfg.Load()
+	reg := newRegistry()
+
+	cfg, err := wscfg.Load(reg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
-
-	reg := newRegistry()
 
 	var app App
 	ctx := kong.Parse(&app,
@@ -82,7 +86,8 @@ func main() {
 		kong.Bind(reg),
 	)
 
-	cfg.Projects = wscfg.FilterProjects(cfg.Projects, app.Project, app.NoDeps)
+	cfg.ProjectFilter = app.Project
+	cfg.NoDeps = app.NoDeps
 
 	if err := ctx.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)

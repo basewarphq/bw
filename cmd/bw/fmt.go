@@ -8,13 +8,13 @@ import (
 	"github.com/basewarphq/bw/cmd/internal/wscfg"
 )
 
-type CheckAllCmd struct{}
+type FmtCmd struct{}
 
-func (c *CheckAllCmd) Run(cfg *wscfg.Config, reg *tool.Registry) error {
+func (c *FmtCmd) Run(cfg *wscfg.Config, reg *tool.Registry) error {
 	ctx := context.Background()
-	g, err := dag.Build(cfg.Projects, reg, cfg.Root, tool.AllDevCheckSteps)
+	g, err := dag.Build(cfg.Projects, reg, cfg, []tool.Step{tool.StepFmt})
 	if err != nil {
 		return err
 	}
-	return dag.Execute(ctx, g)
+	return dag.Execute(ctx, g, cliReporter{})
 }

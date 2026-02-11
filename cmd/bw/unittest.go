@@ -8,13 +8,13 @@ import (
 	"github.com/basewarphq/bw/cmd/internal/wscfg"
 )
 
-type LintCmd struct{}
+type UnitTestCmd struct{}
 
-func (c *LintCmd) Run(cfg *wscfg.Config, reg *tool.Registry) error {
+func (c *UnitTestCmd) Run(cfg *wscfg.Config, reg *tool.Registry) error {
 	ctx := context.Background()
-	g, err := dag.Build(cfg.Projects, reg, cfg.Root, []tool.Step{tool.StepLint})
+	g, err := dag.Build(cfg.Projects, reg, cfg, []tool.Step{tool.StepUnitTest})
 	if err != nil {
 		return err
 	}
-	return dag.Execute(ctx, g)
+	return dag.Execute(ctx, g, cliReporter{})
 }

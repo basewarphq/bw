@@ -25,7 +25,7 @@ items:
 	})
 
 	tl := yamltool.New()
-	if err := tl.Fmt(context.Background(), dir); err != nil {
+	if err := tl.Fmt(context.Background(), dir, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -54,7 +54,7 @@ items:
 	})
 
 	tl := yamltool.New()
-	if err := tl.Fmt(context.Background(), dir); err != nil {
+	if err := tl.Fmt(context.Background(), dir, nil); err != nil {
 		t.Fatal(err)
 	}
 

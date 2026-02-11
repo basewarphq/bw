@@ -29,7 +29,7 @@ func TestGenDownconverts(t *testing.T) {
 	})
 
 	tl := openapitool.New()
-	if err := tl.Gen(context.Background(), dir); err != nil {
+	if err := tl.Gen(context.Background(), dir, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -50,7 +50,7 @@ func TestGenMissingInputErrors(t *testing.T) {
 	dir := testutil.Setup(t, map[string]string{})
 
 	tl := openapitool.New()
-	if err := tl.Gen(context.Background(), dir); err == nil {
+	if err := tl.Gen(context.Background(), dir, nil); err == nil {
 		t.Error("expected error when proto/openapi.json is missing")
 	}
 }

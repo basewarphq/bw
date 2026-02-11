@@ -27,21 +27,25 @@ func (t *Tool) RequiredFiles() []tool.FileRequirement {
 	}
 }
 
-func (t *Tool) Gen(ctx context.Context, dir string) error {
+func (t *Tool) Diagnose(ctx context.Context, dir string, r tool.NodeReporter) error {
+	return tool.DiagnoseDefaults(ctx, dir, t, tool.BinCheckerFrom(ctx), r)
+}
+
+func (t *Tool) Gen(ctx context.Context, dir string, _ tool.NodeReporter) error {
 	if err := tool.CheckFiles(dir, t.RequiredFiles()); err != nil {
 		return err
 	}
 	return cmdexec.Run(ctx, dir, "buf", "generate")
 }
 
-func (t *Tool) Fmt(ctx context.Context, dir string) error {
+func (t *Tool) Fmt(ctx context.Context, dir string, _ tool.NodeReporter) error {
 	if err := tool.CheckFiles(dir, t.RequiredFiles()); err != nil {
 		return err
 	}
 	return cmdexec.Run(ctx, dir, "buf", "format", "-w")
 }
 
-func (t *Tool) Lint(ctx context.Context, dir string) error {
+func (t *Tool) Lint(ctx context.Context, dir string, _ tool.NodeReporter) error {
 	if err := tool.CheckFiles(dir, t.RequiredFiles()); err != nil {
 		return err
 	}

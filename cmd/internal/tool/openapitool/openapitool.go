@@ -27,7 +27,11 @@ func (t *Tool) RequiredFiles() []tool.FileRequirement {
 	}
 }
 
-func (t *Tool) Gen(ctx context.Context, dir string) error {
+func (t *Tool) Diagnose(ctx context.Context, dir string, r tool.NodeReporter) error {
+	return tool.DiagnoseDefaults(ctx, dir, t, tool.BinCheckerFrom(ctx), r)
+}
+
+func (t *Tool) Gen(ctx context.Context, dir string, _ tool.NodeReporter) error {
 	if err := tool.CheckFiles(dir, t.RequiredFiles()); err != nil {
 		return err
 	}

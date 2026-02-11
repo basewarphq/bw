@@ -38,7 +38,7 @@ func TestGenGeneratesTemplFile(t *testing.T) {
 	dir := setupTemplProject(t)
 
 	tl := templtool.New()
-	if err := tl.Gen(context.Background(), dir); err != nil {
+	if err := tl.Gen(context.Background(), dir, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -57,7 +57,7 @@ func TestGenMissingToolDirectiveErrors(t *testing.T) {
 	})
 
 	tl := templtool.New()
-	err := tl.Gen(context.Background(), dir)
+	err := tl.Gen(context.Background(), dir, nil)
 	if err == nil {
 		t.Fatal("expected error when templ tool directive is missing from go.mod")
 	}
