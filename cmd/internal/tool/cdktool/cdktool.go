@@ -24,6 +24,7 @@ import (
 const devSlotExpirationDays = 7
 
 type cdkConfig struct {
+	Dir             string              `toml:"dir"`
 	Profile         string              `toml:"profile"`
 	DevStrategy     string              `toml:"dev-strategy"`
 	LegacyBootstrap bool                `toml:"legacy-bootstrap"`
@@ -33,6 +34,13 @@ type cdkConfig struct {
 type preBootstrapConfig struct {
 	Template   string            `toml:"template"`
 	Parameters map[string]string `toml:"parameters"`
+}
+
+func (c *cdkConfig) resolveDir(projectDir string) string {
+	if c.Dir != "" {
+		return filepath.Join(projectDir, c.Dir)
+	}
+	return projectDir
 }
 
 func (c *cdkConfig) cdkArgs(qualifier string) []string {
@@ -60,6 +68,9 @@ func (t *Tool) DecodeConfig(meta toml.MetaData, raw toml.Primitive) (any, error)
 	var cfg cdkConfig
 	if err := meta.PrimitiveDecode(raw, &cfg); err != nil {
 		return nil, errors.Wrap(err, "decoding cdk config")
+	}
+	if cfg.Dir != "" && filepath.IsAbs(cfg.Dir) {
+		return nil, errors.Newf("dir must be relative, got %q", cfg.Dir)
 	}
 	if cfg.DevStrategy != "" && cfg.DevStrategy != "iam-username" {
 		return nil, errors.Newf("dev-strategy must be %q, got %q", "iam-username", cfg.DevStrategy)
@@ -90,11 +101,13 @@ func (t *Tool) RequiredFiles() []tool.FileRequirement {
 }
 
 func (t *Tool) Diagnose(ctx context.Context, dir string, r tool.NodeReporter) error {
-	return tool.DiagnoseDefaults(ctx, dir, t, tool.BinCheckerFrom(ctx), r)
+	cfg := configFromCtx(ctx)
+	return tool.DiagnoseDefaults(ctx, cfg.resolveDir(dir), t, tool.BinCheckerFrom(ctx), r)
 }
 
 func (t *Tool) Bootstrap(ctx context.Context, dir string, _ tool.NodeReporter) error {
 	cfg := configFromCtx(ctx)
+	dir = cfg.resolveDir(dir)
 	opts, _ := tool.BootstrapOptionsFrom(ctx)
 
 	profile := opts.Profile
@@ -144,6 +157,7 @@ func (t *Tool) Bootstrap(ctx context.Context, dir string, _ tool.NodeReporter) e
 
 func (t *Tool) Diff(ctx context.Context, dir string, _ tool.NodeReporter) error {
 	cfg := configFromCtx(ctx)
+	dir = cfg.resolveDir(dir)
 
 	deployment, err := resolveDeployment(ctx, cfg, dir)
 	if err != nil {
@@ -165,6 +179,7 @@ func (t *Tool) Diff(ctx context.Context, dir string, _ tool.NodeReporter) error 
 
 func (t *Tool) Deploy(ctx context.Context, dir string, _ tool.NodeReporter) error {
 	cfg := configFromCtx(ctx)
+	dir = cfg.resolveDir(dir)
 	opts, _ := tool.DeployOptionsFrom(ctx)
 
 	deployment, err := resolveDeployment(ctx, cfg, dir)
@@ -230,6 +245,7 @@ func listDeploymentStacks(
 func inspectOutputsByKey(outputKeySubstr string) func(context.Context, string, tool.NodeReporter) error {
 	return func(ctx context.Context, dir string, r tool.NodeReporter) error {
 		cfg := configFromCtx(ctx)
+		dir = cfg.resolveDir(dir)
 
 		deployment, err := resolveDeployment(ctx, cfg, dir)
 		if err != nil {
@@ -273,6 +289,7 @@ func inspectOutputsByKey(outputKeySubstr string) func(context.Context, string, t
 
 func inspect1PasswordSync(ctx context.Context, dir string, r tool.NodeReporter) error {
 	cfg := configFromCtx(ctx)
+	dir = cfg.resolveDir(dir)
 
 	deployment, err := resolveDeployment(ctx, cfg, dir)
 	if err != nil {
