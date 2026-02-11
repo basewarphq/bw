@@ -31,5 +31,5 @@ func (r *cliNodeReporter) Table(columns []string, rows [][]string) {
 }
 
 func (r *cliNodeReporter) Error(msg string) {
-	fmt.Fprintln(os.Stdout, msg)
+	fmt.Fprintln(os.Stderr, msg)
 }
