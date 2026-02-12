@@ -11,7 +11,7 @@ type InfraSlotsCmd struct {
 	Status  InfraSlotStatusCmd  `cmd:"" help:"Show status of all dev slots."`
 }
 
-func cdkProjectDirAndProfile(cfg *wscfg.Config) (dir, profile string, err error) {
+func infraProjectDirAndProfile(cfg *wscfg.Config) (dir, profile string, err error) {
 	proj, err := cfg.FindProjectByTool("cdk")
 	if err != nil {
 		return "", "", err

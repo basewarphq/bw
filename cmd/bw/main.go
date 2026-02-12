@@ -31,12 +31,6 @@ type App struct {
 		Matrix ToolsMatrixCmd `cmd:"" help:"Show the tool/step capability matrix."`
 	} `cmd:"" help:"Tool commands."`
 
-	Cdk struct {
-		Bootstrap BootstrapCmd `cmd:"" help:"Bootstrap CDK in the current AWS account/region."`
-		Deploy    DeployCmd    `cmd:"" help:"Deploy CDK stacks for a deployment."`
-		Diff      DiffCmd      `cmd:"" help:"Show CDK diff for a deployment."`
-		Slots     SlotsCmd     `cmd:"" help:"Manage dev deployment slots."`
-	} `cmd:"" help:"CDK commands."`
 	Build     BuildCmd     `cmd:"" help:"Build all projects."`
 	Fmt       FmtCmd       `cmd:"" help:"Format code in all projects."`
 	Gen       GenCmd       `cmd:"" help:"Generate code in all projects."`

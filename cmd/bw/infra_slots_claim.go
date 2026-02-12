@@ -14,7 +14,7 @@ type InfraSlotClaimCmd struct{}
 func (c *InfraSlotClaimCmd) Run(cfg *wscfg.Config) error {
 	ctx := context.Background()
 
-	dir, profile, err := cdkProjectDirAndProfile(cfg)
+	dir, profile, err := infraProjectDirAndProfile(cfg)
 	if err != nil {
 		return err
 	}

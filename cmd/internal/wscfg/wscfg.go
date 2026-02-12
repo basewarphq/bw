@@ -21,10 +21,6 @@ type Config struct {
 	DecodedToolConfigs map[string]map[string]any `toml:"-"`
 }
 
-func (c *Config) FilteredProjects() []ProjectConfig {
-	return FilterProjects(c.Projects, c.ProjectFilter, c.NoDeps)
-}
-
 type ProjectConfig struct {
 	Name       string                    `toml:"name"`
 	Dir        string                    `toml:"dir"`
